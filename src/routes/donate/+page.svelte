@@ -1,6 +1,8 @@
 <script>
+  // Page content lives in: src/lib/data/donate.js  ← edit there
+  // Bank details come from: src/lib/data/site.js
+  import { donate } from '$lib/data/donate.js';
   import { site } from '$lib/data/site.js';
-  import { env as publicEnv } from '$env/dynamic/public';
   import { onMount } from 'svelte';
 
   let form = { donor_name: '', email: '', phone: '', pan: '', amount: '', purpose: '' };
@@ -10,7 +12,6 @@
   let razorpayLoaded = false;
 
   onMount(() => {
-    // Load Razorpay Checkout script
     const s = document.createElement('script');
     s.src = 'https://checkout.razorpay.com/v1/checkout.js';
     s.onload = () => (razorpayLoaded = true);
@@ -23,7 +24,6 @@
     status = ''; errors = {};
     submitting = true;
     try {
-      // 1. Create a Razorpay order via our server
       const res = await fetch('/api/donate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,14 +37,12 @@
         return;
       }
 
-      // If we're in mock mode (no gateway configured), just show success
       if (data.order?.status === 'created_mock') {
         status = 'Thank you! (Mock mode — Razorpay keys are not configured, but your donor details were captured.)';
         submitting = false;
         return;
       }
 
-      // 2. Open Razorpay Checkout
       if (!razorpayLoaded || !window.Razorpay) {
         status = 'Payment widget still loading. Please try again in a moment.';
         submitting = false;
@@ -62,7 +60,6 @@
         notes: { pan: form.pan, purpose: form.purpose || '' },
         theme: { color: '#1e3a8a' },
         handler: async (response) => {
-          // 3. Verify + record the donation
           const v = await fetch('/api/donate', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -75,7 +72,7 @@
           });
           const out = await v.json();
           if (v.ok) {
-            status = `Thank you for your donation! An 80G receipt will be emailed to ${form.email}.`;
+            status = donate.thankYouTemplate.replace('{EMAIL}', form.email);
             form = { donor_name: '', email: '', phone: '', pan: '', amount: '', purpose: '' };
           } else {
             status = out.error || 'Payment captured but verification failed. Please email contact@niyodaya.in.';
@@ -87,21 +84,21 @@
         }
       });
       rzp.open();
-    } catch (err) {
+    } catch {
       status = 'Network error. Please try again.';
       submitting = false;
     }
   }
 </script>
 
-<svelte:head><title>Donate — Niyodaya Foundation</title></svelte:head>
+<svelte:head><title>{donate.title}</title></svelte:head>
 
 <section class="section">
   <div class="container">
     <div class="hero" style="background: linear-gradient(135deg,#fef3c7,#fee2e2)">
-      <div class="eyebrow">Donate</div>
-      <h1>Donate — avail 80G Tax Exemption</h1>
-      <p class="lede">Every contribution helps a child stay in school, eat a warm meal, and learn with dignity. Donations to Niyodaya are exempt under Section 80G of the Income Tax Act, 1961.</p>
+      <div class="eyebrow">{donate.hero.eyebrow}</div>
+      <h1>{donate.hero.heading}</h1>
+      <p class="lede">{donate.hero.lede}</p>
     </div>
   </div>
 </section>
@@ -110,7 +107,7 @@
   <div class="container">
     <div class="grid cols-2-1">
       <div class="card">
-        <h3>Donor form</h3>
+        <h3>{donate.formHeading}</h3>
 
         {#if status}
           <div class="alert {Object.keys(errors).length ? 'error' : 'success'}">{status}</div>
@@ -153,32 +150,31 @@
               {submitting ? 'Processing…' : 'Proceed to Razorpay Checkout →'}
             </button>
           </div>
-          <p class="hint">We will email you an 80G receipt on successful payment.</p>
+          <p class="hint">{donate.formHint}</p>
         </form>
       </div>
 
       <div>
         <div class="card">
-          <h3>Where your money goes</h3>
+          <h3>{donate.whereMoneyGoes.heading}</h3>
           <table class="table">
             <thead><tr><th>Amount</th><th>What it enables</th></tr></thead>
             <tbody>
-              <tr><td>₹1,500 / $15</td><td>Books &amp; stationery for one child for a term</td></tr>
-              <tr><td>₹10,000 / $110</td><td>NIOS fees + study material for a Vridhi student</td></tr>
-              <tr><td>₹2,40,000 / $2,500</td><td>One teaching-volunteer salary for a year (Vidya)</td></tr>
-              <tr><td>₹3,00,000 / $3,200</td><td>Adopts one classroom for a year (Vidya)</td></tr>
+              {#each donate.whereMoneyGoes.rows as r}
+                <tr><td>{r.amount}</td><td>{r.enables}</td></tr>
+              {/each}
             </tbody>
           </table>
         </div>
 
         <div class="card mt-2">
-          <h3>Bank transfer (NEFT / IMPS)</h3>
+          <h3>{donate.bankHeading}</h3>
           <pre class="bank">
 Name:    {site.bank.name}
 Bank:    {site.bank.bank}
 A/C No.: {site.bank.account}
 IFSC:    {site.bank.ifsc}</pre>
-          <p class="hint">For NEFT / IMPS / UPI, please email a screenshot of the transfer along with your PAN to <a href="mailto:{site.email}">{site.email}</a> for the 80G receipt.</p>
+          <p class="hint">{donate.bankNote.replace('{EMAIL}', site.email)}</p>
         </div>
       </div>
     </div>

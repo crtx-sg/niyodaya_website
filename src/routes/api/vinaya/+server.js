@@ -1,7 +1,7 @@
 // POST /api/vinaya — Project Vinaya: school request or volunteer offer
 import { json } from '@sveltejs/kit';
 import { insert } from '$lib/server/insforge.js';
-import { sendEmail } from '$lib/server/email.js';
+import { sendToUserAndAdmin, sendEmail, ackTemplate } from '$lib/server/email.js';
 import { env } from '$env/dynamic/private';
 import { validate, required } from '$lib/utils/validation.js';
 
@@ -39,11 +39,52 @@ export async function POST({ request }) {
   const result = await insert('vinaya_requests', row);
   if (!result.ok) return json({ error: result.error || 'Save failed' }, { status: 500 });
 
-  sendEmail({
-    to: env.EMAIL_ADMIN || 'contact@niyodaya.in',
-    subject: `[Vinaya] New ${type} submission: ${body.name}`,
-    html: `<pre>${JSON.stringify(row, null, 2)}</pre>`
-  }).catch(() => {});
+  // If the contact string looks like an email, send the acknowledgement there.
+  const emailLike = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.contact || '').trim());
+
+  const subject = type === 'school'
+    ? `[Vinaya] Request received from ${body.name}`
+    : `[Vinaya] Volunteer sign-up received: ${body.name}`;
+
+  const ackBody = type === 'school'
+    ? `<p>Thank you — we have received your request for support from Niyodaya under <strong>Project Vinaya</strong>. A member of our team will reach out to your school within a week.</p>
+       <ul>
+         <li><b>School:</b> ${esc(body.name)}</li>
+         <li><b>Contact:</b> ${esc(body.contact)}</li>
+         <li><b>City:</b> ${esc(body.city || '—')}</li>
+         <li><b>Support needed:</b> ${esc(body.needs)}</li>
+         <li><b>Description:</b><br>${esc(body.description || '—').replace(/\n/g, '<br>')}</li>
+       </ul>`
+    : `<p>Thank you for offering to volunteer with Niyodaya under <strong>Project Vinaya</strong>. We'll be in touch shortly to match your skills with the right opportunity.</p>
+       <ul>
+         <li><b>Name:</b> ${esc(body.name)}</li>
+         <li><b>Contact:</b> ${esc(body.contact)}</li>
+         <li><b>City:</b> ${esc(body.city)}</li>
+         <li><b>Skills:</b> ${esc(body.skills)}</li>
+         <li><b>Hours / week:</b> ${esc(body.hours_per_week || '—')}</li>
+       </ul>`;
+
+  if (emailLike) {
+    sendToUserAndAdmin({
+      userEmail: String(body.contact).trim(),
+      userName: body.name,
+      subject,
+      body: ackBody
+    }).catch(() => {});
+  } else {
+    sendEmail({
+      to: env.EMAIL_ADMIN || 'contact@niyodaya.in',
+      subject,
+      html: ackTemplate({ name: 'Team Niyodaya', body: ackBody + `<p><em>Contact provided was not an email address — reach out via phone.</em></p>` })
+    }).catch(() => {});
+  }
 
   return json({ ok: true, id: result.id });
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

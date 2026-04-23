@@ -18,5 +18,9 @@
     "svelte-check": "^3.8.1",
     "vite": "^5.3.1"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "nodemailer": "^8.0.5",
+    "pdfkit": "^0.18.0"
+  }
 }

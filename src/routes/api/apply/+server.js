@@ -1,9 +1,8 @@
 // POST /api/apply — Project Vridhi student support application
 import { json } from '@sveltejs/kit';
 import { insert } from '$lib/server/insforge.js';
-import { sendEmail, ackTemplate } from '$lib/server/email.js';
-import { validate, required, isPhone } from '$lib/utils/validation.js';
-import { env } from '$env/dynamic/private';
+import { sendToUserAndAdmin } from '$lib/server/email.js';
+import { validate, required, isPhone, isEmail } from '$lib/utils/validation.js';
 
 export async function POST({ request }) {
   let body;
@@ -18,31 +17,60 @@ export async function POST({ request }) {
   });
   if (!ok) return json({ error: 'Please correct the highlighted fields.', errors }, { status: 400 });
 
+  // Optional email (for acknowledgement). If the applicant provided one and it's valid, we'll use it.
+  const hasEmail = body.email && !isEmail(body.email);
+
   const result = await insert('vridhi_applications', {
     student_name: body.student_name,
     age: Number(body.age),
     father_name: body.father_name,
     phone: body.phone,
+    email: hasEmail ? body.email : null,
     school_name: body.school_name || null,
     reason: body.reason,
     status: 'new'
   });
   if (!result.ok) return json({ error: result.error || 'Save failed' }, { status: 500 });
 
-  // Notify admin + acknowledge applicant (best-effort — don't fail the request)
-  const admin = env.EMAIL_ADMIN || 'contact@niyodaya.in';
-  sendEmail({
-    to: admin,
-    subject: `[Vridhi] New application: ${body.student_name}`,
-    html: `<p>A new Vridhi application has been received.</p>
-           <ul>
-             <li><b>Student:</b> ${body.student_name} (age ${body.age})</li>
-             <li><b>Father/Guardian:</b> ${body.father_name}</li>
-             <li><b>Phone:</b> ${body.phone}</li>
-             <li><b>School:</b> ${body.school_name || '—'}</li>
-             <li><b>Reason:</b> ${body.reason}</li>
-           </ul>`
-  }).catch(() => {});
+  // Send an acknowledgement to the submitter (and copy contact@niyodaya.in).
+  // If no email was supplied, we still notify the admin.
+  const subject = `[Vridhi] Application received for ${body.student_name}`;
+  const ackBody = `
+    <p>We have received your application for support under <strong>Project Vridhi</strong>. Our team will review the details and contact you within <strong>5 working days</strong>.</p>
+    <p>A copy of what you submitted:</p>
+    <ul>
+      <li><b>Student:</b> ${esc(body.student_name)} (age ${esc(body.age)})</li>
+      <li><b>Father / Guardian:</b> ${esc(body.father_name)}</li>
+      <li><b>Phone:</b> ${esc(body.phone)}</li>
+      <li><b>School:</b> ${esc(body.school_name || '—')}</li>
+      <li><b>Reason for support:</b><br>${esc(body.reason).replace(/\n/g, '<br>')}</li>
+    </ul>
+    <p>Your information is kept strictly confidential and used only to assess your request.</p>
+  `;
+
+  if (hasEmail) {
+    sendToUserAndAdmin({
+      userEmail: body.email,
+      userName: body.father_name || body.student_name,
+      subject,
+      body: ackBody
+    }).catch(() => {});
+  } else {
+    // no user email — send only to admin
+    const { sendEmail, ackTemplate } = await import('$lib/server/email.js');
+    sendEmail({
+      to: process.env.EMAIL_ADMIN || 'contact@niyodaya.in',
+      subject,
+      html: ackTemplate({ name: 'Team Niyodaya', body: ackBody + `<p><em>No email was supplied by the applicant.</em></p>` })
+    }).catch(() => {});
+  }
 
   return json({ ok: true, id: result.id });
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

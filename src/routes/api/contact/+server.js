@@ -1,8 +1,7 @@
 // POST /api/contact — contact form
 import { json } from '@sveltejs/kit';
 import { insert } from '$lib/server/insforge.js';
-import { sendEmail } from '$lib/server/email.js';
-import { env } from '$env/dynamic/private';
+import { sendToUserAndAdmin } from '$lib/server/email.js';
 import { validate, required, isEmail } from '$lib/utils/validation.js';
 
 export async function POST({ request }) {
@@ -24,13 +23,29 @@ export async function POST({ request }) {
   });
   if (!result.ok) return json({ error: result.error || 'Save failed' }, { status: 500 });
 
-  sendEmail({
-    to: env.EMAIL_ADMIN || 'contact@niyodaya.in',
-    subject: `[Contact] ${body.subject || 'New message'} — ${body.name}`,
-    html: `<p><b>From:</b> ${body.name} &lt;${body.email}&gt;</p>
-           <p><b>Subject:</b> ${body.subject || '—'}</p>
-           <p><b>Message:</b></p><p>${body.message.replace(/\n/g, '<br>')}</p>`
+  const subject = `[Contact] ${body.subject || 'Message received'} — ${body.name}`;
+  const ackBody = `
+    <p>Thank you for writing to Niyodaya. We've received your message and a member of our team will get back to you soon.</p>
+    <p><b>You wrote:</b></p>
+    <blockquote style="border-left:3px solid #f59e0b; padding: 4px 12px; margin: 6px 0; color:#374151;">
+      ${body.subject ? `<p><b>Subject:</b> ${esc(body.subject)}</p>` : ''}
+      <p>${esc(body.message).replace(/\n/g, '<br>')}</p>
+    </blockquote>
+  `;
+
+  sendToUserAndAdmin({
+    userEmail: body.email,
+    userName: body.name,
+    subject,
+    body: ackBody
   }).catch(() => {});
 
   return json({ ok: true, id: result.id });
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

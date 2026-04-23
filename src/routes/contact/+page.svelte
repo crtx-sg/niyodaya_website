@@ -84,6 +84,18 @@
         </address>
         <p>Email: <a href="mailto:{site.email}">{site.email}</a></p>
         <p>Website: <a href="https://{site.website}">{site.website}</a></p>
+
+        <div class="map mt-2">
+          <iframe
+            title="Map — Niyodaya Foundation registered office"
+            src="https://www.openstreetmap.org/export/embed.html?bbox=77.650%2C12.967%2C77.665%2C12.978&layer=mapnik&marker=12.9725%2C77.6575"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+          ></iframe>
+          <div class="map-link">
+            <a class="btn sm" href="https://www.google.com/maps/search/?api=1&query=Saideep+Haven+Sri+Rama+Temple+Road+New+Thippasandra+Bangalore+560075" target="_blank" rel="noopener">Open in Google Maps ↗</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -91,4 +103,7 @@
 
 <style>
   address { font-style: normal; line-height: 1.7; }
+  .map { border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .map iframe { width: 100%; height: 280px; border: 0; display: block; }
+  .map-link { padding: 10px 12px; background: #f8fafc; border-top: 1px solid var(--line); text-align: center; }
 </style>

@@ -1,11 +1,16 @@
-<svelte:head><title>Resources — Niyodaya Foundation</title></svelte:head>
+<script>
+  // Page content lives in: src/lib/data/resources.js  ← edit there
+  import { resources } from '$lib/data/resources.js';
+</script>
+
+<svelte:head><title>{resources.title}</title></svelte:head>
 
 <section class="section">
   <div class="container">
     <div class="hero" style="background: linear-gradient(135deg,#eff6ff,#fefce8)">
-      <div class="eyebrow">Resources</div>
-      <h1>Useful resources for students, teachers &amp; parents</h1>
-      <p class="lede">Curated external platforms, assessment toolkits, and values-led curricula recommended by our team.</p>
+      <div class="eyebrow">{resources.hero.eyebrow}</div>
+      <h1>{resources.hero.heading}</h1>
+      <p class="lede">{resources.hero.lede}</p>
     </div>
   </div>
 </section>
@@ -13,46 +18,32 @@
 <section class="section tight">
   <div class="container">
     <div class="grid cols-3">
-      <div class="card">
-        <h3>DIKSHA</h3>
-        <p>National platform for school education, an NCERT initiative offering lesson plans, textbooks, and teacher training in multiple Indian languages.</p>
-        <a class="btn sm" href="https://diksha.gov.in/" target="_blank" rel="noopener">Visit diksha.gov.in ↗</a>
-      </div>
-      <div class="card">
-        <h3>DIYA — ASER toolkit</h3>
-        <p>Do-It-Yourself ASER is a toolkit anyone can use to test the basic learning levels of children aged 5–16. Ideal for parents, volunteers, and community workers.</p>
-        <a class="btn sm" href="https://asercentre.org/do-it-yourself-aser-diya/" target="_blank" rel="noopener">Explore DIYA ↗</a>
-      </div>
-      <div class="card">
-        <h3>Values-based class content</h3>
-        <p>Sri Sathya Sai Loka Seva Gurukulam offers a ready library of values-led courses and materials we draw inspiration from.</p>
-        <a class="btn sm" href="https://srisathyasailokasevagurukulam.org/" target="_blank" rel="noopener">Gurukulam home ↗</a>
-        <a class="btn sm" style="margin-top:6px" href="https://srisathyasailokasevagurukulam.org/courses/" target="_blank" rel="noopener">Browse courses ↗</a>
-      </div>
+      {#each resources.externalResources.items as r}
+        <div class="card">
+          <h3>{r.heading}</h3>
+          <p>{r.body}</p>
+          {#each r.links as link}
+            <a class="btn sm {link.ghost ? 'ghost' : ''}" href={link.href} target={link.external ? '_blank' : undefined} rel={link.external ? 'noopener' : undefined} style="margin-top:6px">
+              {link.label}{link.external ? ' ↗' : ''}
+            </a>
+          {/each}
+        </div>
+      {/each}
     </div>
 
-    <h2 class="mt-4">Niyodaya documents</h2>
+    <h2 class="mt-4">{resources.documents.heading}</h2>
     <div class="grid cols-4 mt-2">
-      <div class="card">
-        <h4>Memorandum of Association</h4>
-        <p class="text-muted">Founding document — Section 8 Company, dated 15 May 2021.</p>
-        <a class="btn sm" href="/MemorandumofAssociation.pdf" target="_blank" rel="noopener">Download PDF</a>
-      </div>
-      <div class="card">
-        <h4>Annual Reports</h4>
-        <p class="text-muted">Published annually from FY 2022-23 onward.</p>
-        <a class="btn sm ghost">Browse reports</a>
-      </div>
-      <div class="card">
-        <h4>80G Certificate</h4>
-        <p class="text-muted">Tax-exemption certificate for donors.</p>
-        <a class="btn sm ghost">Download PDF</a>
-      </div>
-      <div class="card">
-        <h4>Darpan Certificate</h4>
-        <p class="text-muted">NITI Aayog NGO Darpan registration — verifies us on the Govt. of India NGO registry.</p>
-        <a class="btn sm" href="https://ngodarpan.gov.in/" target="_blank" rel="noopener">Visit ngodarpan.gov.in ↗</a>
-      </div>
+      {#each resources.documents.items as d}
+        <div class="card">
+          <h4>{d.heading}</h4>
+          <p class="text-muted">{@html d.body}</p>
+          {#each d.links as link}
+            <a class="btn sm {link.ghost ? 'ghost' : ''}" href={link.href} target={link.external ? '_blank' : undefined} rel={link.external ? 'noopener' : undefined}>
+              {link.label}{link.external ? ' ↗' : ''}
+            </a>
+          {/each}
+        </div>
+      {/each}
     </div>
   </div>
 </section>

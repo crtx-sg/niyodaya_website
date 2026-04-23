@@ -1,4 +1,7 @@
 <script>
+  // Page content lives in: src/lib/data/vinaya.js  ← edit there
+  import { vinaya } from '$lib/data/vinaya.js';
+
   let school = { type: 'school', name: '', contact: '', city: '', needs: '', description: '' };
   let volunteer = { type: 'volunteer', name: '', contact: '', city: '', skills: '', hours_per_week: '' };
   let status = '';
@@ -20,13 +23,11 @@
         errors = data.errors || {};
         status = data.error || 'Something went wrong.';
       } else {
-        status = which === 'school'
-          ? 'Request received. Our team will reach out to your school within a week.'
-          : "Thank you for offering to volunteer. We'll be in touch soon.";
+        status = which === 'school' ? vinaya.schoolForm.successMessage : vinaya.volunteerForm.successMessage;
         if (which === 'school') school = { type: 'school', name: '', contact: '', city: '', needs: '', description: '' };
         else volunteer = { type: 'volunteer', name: '', contact: '', city: '', skills: '', hours_per_week: '' };
       }
-    } catch (err) {
+    } catch {
       status = 'Network error. Please try again.';
     } finally {
       submitting = null;
@@ -34,14 +35,14 @@
   }
 </script>
 
-<svelte:head><title>Project Vinaya — Niyodaya Foundation</title></svelte:head>
+<svelte:head><title>{vinaya.title}</title></svelte:head>
 
 <section class="section">
   <div class="container">
     <div class="hero" style="background: linear-gradient(135deg,#ecfeff,#f0fdf4)">
-      <div class="eyebrow">Project</div>
-      <h1>Project Vinaya — Resources for schools that need them</h1>
-      <p class="lede">Vinaya connects deserving schools and students with teaching materials, volunteer educators, and long-form mentorship from our network.</p>
+      <div class="eyebrow">{vinaya.hero.eyebrow}</div>
+      <h1>{vinaya.hero.heading}</h1>
+      <p class="lede">{vinaya.hero.lede}</p>
     </div>
   </div>
 </section>
@@ -49,21 +50,21 @@
 <section class="section tight">
   <div class="container">
     <div class="grid cols-3">
-      <div class="card"><h3>Teaching resources</h3><p>Textbooks, worksheets, lab kits, computer hardware, and sports equipment.</p></div>
-      <div class="card"><h3>Volunteer educators</h3><p>Qualified professionals who give 2-6 hours a week to teach subjects, values, and life-skills.</p></div>
-      <div class="card"><h3>Mentorship</h3><p>Long-form mentoring for senior students on careers, higher education, and vocational choices.</p></div>
+      {#each vinaya.capabilities as c}
+        <div class="card"><h3>{c.heading}</h3><p>{c.body}</p></div>
+      {/each}
     </div>
   </div>
 </section>
 
 <section class="section tight">
   <div class="container">
-    <h2>Our impact so far</h2>
-    <p class="text-muted">A snapshot of what Project Vinaya has delivered <strong>as of 2025</strong>, working with modest resources and a committed volunteer network.</p>
+    <h2>{vinaya.impact.heading}</h2>
+    <p class="text-muted">{@html vinaya.impact.note}</p>
     <div class="grid cols-3 mt-2">
-      <div class="card stat"><div class="num">5</div><div class="lbl">schools supported</div></div>
-      <div class="card stat"><div class="num">₹75,000</div><div class="lbl">disbursed in resources</div></div>
-      <div class="card stat"><div class="num">3</div><div class="lbl">categories: furniture, stationery, kitchen equipment</div></div>
+      {#each vinaya.impact.stats as s}
+        <div class="card stat"><div class="num">{s.num}</div><div class="lbl">{@html s.label}</div></div>
+      {/each}
     </div>
   </div>
 </section>
@@ -74,7 +75,7 @@
 
     <div class="grid cols-2 mt-2">
       <div class="card">
-        <h3>Request resources / volunteers (schools)</h3>
+        <h3>{vinaya.schoolForm.heading}</h3>
         <form class="form" on:submit|preventDefault={() => submit('school')} novalidate>
           <label>School Name *</label>
           <input bind:value={school.name} required />
@@ -95,7 +96,7 @@
       </div>
 
       <div class="card">
-        <h3>Offer to volunteer</h3>
+        <h3>{vinaya.volunteerForm.heading}</h3>
         <form class="form" on:submit|preventDefault={() => submit('volunteer')} novalidate>
           <label>Your name *</label>
           <input bind:value={volunteer.name} required />

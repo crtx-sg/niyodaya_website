@@ -8,7 +8,12 @@ const config = {
     adapter: adapter(),
     alias: {
       $lib: 'src/lib'
-    }
+    },
+    // Our admin cookie is SameSite=Lax (blocks cross-site CSRF by default),
+    // so we rely on that + explicit auth checks instead of SvelteKit's
+    // extra form-origin check (which breaks server-to-server testing tools
+    // and some mobile browsers).
+    csrf: { checkOrigin: false }
   }
 };
 

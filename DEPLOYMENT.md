@@ -103,51 +103,146 @@ create table gallery_photos (
 
 ## 3. Razorpay — payment gateway
 
-1. Sign up at **https://razorpay.com** → Merchant account for Niyodaya Foundation (you'll need PAN, GSTIN if any, bank proof).
-2. In *Settings → API Keys*, generate **Test Mode** keys first. You get:
-   - `RAZORPAY_KEY_ID` starts with `rzp_test_…`
-   - `RAZORPAY_KEY_SECRET`
-3. Copy the same `KEY_ID` to `PUBLIC_RAZORPAY_KEY_ID` (safe to expose to the browser — Razorpay's Checkout needs it on the client).
-4. (Optional, for v0.2) Create a webhook endpoint pointing at `https://niyodaya.in/api/razorpay-webhook` and copy the secret to `RAZORPAY_WEBHOOK_SECRET`.
-5. Test donations end-to-end with test cards from Razorpay's docs.
-6. Once comfortable, switch to **Live Mode** and replace the keys.
+### a. Create the merchant account
+1. Go to **https://razorpay.com** and click *Sign up → Continue with business email*.
+2. Choose *Non-profit / Trust* and complete the KYC form. You'll need:
+   - PAN of the foundation (`AAHCN6260D` is on the 80G cert)
+   - Bank proof (a cancelled cheque or bank letter — Axis Bank A/C 921010023379607, IFSC UTIB0004426)
+   - Certificate of incorporation (uploadable — same PDF as the Memorandum)
+   - 80G certificate (attached in `static/80G_Certificate.pdf`)
+3. Razorpay typically approves NGOs within 2-3 business days.
 
-### How the flow works in this site
+### b. Generate API keys
+1. Sign in to the Razorpay Dashboard → **Settings → API Keys**.
+2. Toggle **Test Mode** (top-right) so you can try it out risk-free.
+3. Click **Generate Test Key** — a popup shows:
+   - **Key Id** (starts with `rzp_test_…`)
+   - **Key Secret** (shown *once* — copy immediately)
+4. Put those in your `.env`:
+   ```env
+   RAZORPAY_KEY_ID=rzp_test_ABCxyz...
+   RAZORPAY_KEY_SECRET=<copy from the popup>
+   PUBLIC_RAZORPAY_KEY_ID=rzp_test_ABCxyz...     # same value as KEY_ID
+   ```
+5. Restart the site (`npm run dev`). Now the Donate page opens the real Razorpay Checkout widget.
+
+### c. Webhook (for reliability — optional but recommended)
+1. In the Razorpay Dashboard → **Settings → Webhooks → Add New Webhook**.
+2. URL: `https://niyodaya.in/api/razorpay-webhook`  (this endpoint ships in v0.2)
+3. Events to listen for: `payment.captured`, `payment.failed`.
+4. Razorpay shows a **Webhook Secret** — copy it into `RAZORPAY_WEBHOOK_SECRET`.
+5. Webhooks ensure that if the donor's browser closes before our success handler runs, we still record the donation.
+
+### d. Test-mode card numbers
+| Purpose                 | Card number              | CVV   | Expiry         |
+|-------------------------|--------------------------|-------|----------------|
+| Successful payment      | `4111 1111 1111 1111`    | `123` | any future date |
+| Failed payment          | `5104 0600 0000 0008`    | `123` | any future date |
+
+Full list: https://razorpay.com/docs/payments/payments/test-card-details/
+
+### e. Flip to Live Mode
+1. Complete KYC activation (bank verification).
+2. Dashboard → toggle **Live Mode**, generate new keys (start with `rzp_live_…`).
+3. Replace the three Razorpay values in `.env`.
+4. Redeploy. Test with a small real donation (₹10) and refund it from the dashboard.
+
+### f. How the flow works in code
 ```
-Donor fills form → POST /api/donate → we create order → return order_id + key
+Donor fills form → POST /api/donate → server creates Razorpay order → returns order_id + public key
 Browser opens Razorpay Checkout → donor pays → Razorpay returns a signed payload
-Browser posts payload to PUT /api/donate → server verifies signature → inserts row
-Donor + admin receive email receipts.
+Browser posts payload to PUT /api/donate → server verifies signature → inserts `donations` row
+Donor + contact@niyodaya.in receive a thank-you email with the payment ref.
 ```
 
-### Test cards (for Test Mode only)
-- Card: `4111 1111 1111 1111`, CVV: any, Expiry: any future date.
-- Full list: https://razorpay.com/docs/payments/payments/test-card-details/
+---
+
+## 4. Email — transactional (SMTP is now the primary option)
+
+The site tries three transports, in this order:
+1. **SMTP** — if `SMTP_HOST` is set in `.env`. Works with any email provider.
+2. **Resend HTTP API** — if `RESEND_API_KEY` is set.
+3. **Console fallback** — prints to the terminal (for local dev without credentials).
+
+### Option A — SMTP (recommended)
+
+This is the simplest path if you already have `contact@niyodaya.in` set up on any email service (Google Workspace, Zoho, GoDaddy, Outlook, Hostinger, etc.). You just add four values to `.env`:
+
+```env
+SMTP_HOST=smtp.gmail.com        # provider's SMTP hostname
+SMTP_PORT=587                   # 587 for STARTTLS (most common), 465 for SSL
+SMTP_SECURE=false               # true only if you use port 465
+SMTP_USER=contact@niyodaya.in   # full email address
+SMTP_PASS=xxxxxxxxxxxxxxxx      # app password — see below
+EMAIL_FROM="Niyodaya Foundation <contact@niyodaya.in>"
+EMAIL_ADMIN=contact@niyodaya.in
+```
+
+#### Typical settings per provider
+
+| Provider                              | SMTP host                    | Port | Secure | Username        | Password                                                    |
+|---------------------------------------|------------------------------|------|--------|-----------------|-------------------------------------------------------------|
+| **Google Workspace / Gmail**          | `smtp.gmail.com`             | 587  | false  | full email      | App password from https://myaccount.google.com/apppasswords |
+| **Zoho Mail**                         | `smtp.zoho.in`               | 587  | false  | full email      | Account password or app password (2FA)                      |
+| **Microsoft 365 / Outlook**           | `smtp-mail.outlook.com`      | 587  | false  | full email      | Account password (no 2FA) or app password                   |
+| **GoDaddy Professional Email**        | `smtpout.secureserver.net`   | 587  | false  | full email      | Mailbox password                                            |
+| **Hostinger**                         | `smtp.hostinger.com`         | 465  | true   | full email      | Mailbox password                                            |
+| **Your own server (e.g. Postfix)**    | your hostname                | 587  | false  | SMTP user       | SMTP password                                               |
+
+#### Creating a Gmail app password (most common case)
+1. Turn on 2-Factor Authentication for contact@niyodaya.in (Google refuses app passwords otherwise).
+2. Visit https://myaccount.google.com/apppasswords.
+3. App: *Mail*; Device: *Other → "Niyodaya Website"*. Click **Generate**.
+4. Copy the 16-character password → paste as `SMTP_PASS` in `.env`.
+5. Restart the site. Done.
+
+#### Quick SMTP test
+Once credentials are in `.env`, submit the Contact form with a real email in the `email` field. You should see **two emails arrive**: one in the submitter's inbox, one CC'd to contact@niyodaya.in.
+
+### Option B — Resend HTTP API (alternative)
+If you prefer an API-based sender, sign up at https://resend.com, verify the `niyodaya.in` domain (add the TXT/MX records Resend supplies), then set `RESEND_API_KEY=re_...`. Leave all `SMTP_*` values blank.
+
+### Submitter + admin copies
+Every form (Vridhi, Vinaya, Contact, Donate) now sends:
+- A friendly branded acknowledgement to the **submitter's email**.
+- The same email CC'd to **`EMAIL_ADMIN` (contact@niyodaya.in)**.
+
+Reply-To on the submitter's copy is set to `EMAIL_ADMIN`, so when they hit reply it goes to the foundation inbox.
+
+If no email was provided (Vridhi applicant may skip it), only the admin gets notified.
+
+### Swapping providers
+Everything runs through `src/lib/server/email.js` → `sendEmail()` → `sendToUserAndAdmin()`. Endpoints just call the function; they don't know which transport is active.
 
 ---
 
-## 4. Email — transactional
+## 5. Admin access (v0.2 — signed-cookie login)
 
-Default integration: **Resend** (https://resend.com).
+`/admin` is now protected by a simple session-cookie login.
 
-1. Create a Resend account, verify the `niyodaya.in` domain (they'll give you DNS records to add — TXT + MX).
-2. Copy the API key → `RESEND_API_KEY`.
-3. Set `EMAIL_FROM="Niyodaya Foundation <contact@niyodaya.in>"` — Resend needs an address on the verified domain.
-4. Set `EMAIL_ADMIN=contact@niyodaya.in` — admin alerts go here.
+### To enable it for production
+1. Choose a strong shared admin password and put it in `.env`:
+   ```env
+   ADMIN_PASSWORD=<16+ char random string>
+   ADMIN_SESSION_SECRET=<another 32+ char random string>
+   ADMIN_EMAILS=contact@niyodaya.in,ganesh@niyodaya.in
+   ```
+2. Restart the site. Visit `/admin` → you will be redirected to `/admin/login`.
+3. Sign in with any of the emails on the allow-list + the shared password.
+4. The cookie lasts 8 hours. Use the "Sign out" button in the admin top-bar to clear it immediately.
 
-Swapping for Sendgrid / Postmark: edit `src/lib/server/email.js` and change the `fetch` target + body. The rest of the code just calls `sendEmail({ to, subject, html })`.
+### Local / dev behaviour
+Leave `ADMIN_PASSWORD` blank — the admin pages stay open. The server prints a one-time warning on startup. Perfect for demos and previewing the reports without setting anything up.
 
----
+### How it works
+- `src/hooks.server.js` checks every request. Anything under `/admin/*` or `/api/admin/*` needs a valid session cookie (HMAC-signed with `ADMIN_SESSION_SECRET`).
+- Pages without a session are redirected to `/admin/login?next=<orig>`.
+- API calls without a session return `401 Unauthorised`.
+- The login endpoint validates `(email ∈ ADMIN_EMAILS)` AND `(password === ADMIN_PASSWORD)`, then sets the cookie.
+- The razorpay-webhook endpoint is deliberately NOT protected — it authenticates via the Razorpay signature instead.
 
-## 5. Admin access (v0.1)
-
-In v0.1 `/admin` is a public placeholder — it lists what v0.2 will do but doesn't expose any data. If you want to protect it immediately, the simplest approach is:
-
-**Option A — URL-based obscurity (weak, but fine for v0.1):** rename the folder `src/routes/admin` to something like `src/routes/admin-7f3k2`. Still accessible to anyone who has the URL. Use only while the page has no real data.
-
-**Option B — HTTP Basic Auth (quick, hosting-level):** on Vercel / Netlify, add a function or edge middleware to require username/password for `/admin/*`. Ten-minute setup.
-
-**Option C — Real auth (target for v0.2):** Insforge Auth magic-link, email allow-list from `ADMIN_EMAILS` environment variable.
+### Moving to per-user credentials later (v0.3)
+The current flow uses a single shared password. If/when you want individual passwords or magic-link email login, swap `src/lib/server/auth.js` for Insforge Auth — the only callers are `hooks.server.js` and the login endpoint, so it's a localised change.
 
 ---
 
@@ -190,25 +285,34 @@ The app uses `@sveltejs/adapter-node`, so any Node-capable host works. Three opt
 Copy `.env.example` to `.env` (never commit `.env` to git — it's already in `.gitignore`).
 
 ```env
-# Insforge
+# ---- Insforge (data + storage) ----
 INSFORGE_URL=https://your-project.insforge.io
 INSFORGE_API_KEY=sk_insforge_...
 
-# Razorpay
+# ---- Razorpay (payment gateway) ----
 RAZORPAY_KEY_ID=rzp_test_...
 RAZORPAY_KEY_SECRET=...
 RAZORPAY_WEBHOOK_SECRET=...
-PUBLIC_RAZORPAY_KEY_ID=rzp_test_...     # mirror of KEY_ID, exposed to browser
+PUBLIC_RAZORPAY_KEY_ID=rzp_test_...     # same as KEY_ID, exposed to browser
 
-# Email
-RESEND_API_KEY=re_...
+# ---- Email — Option A: SMTP (preferred) ----
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=contact@niyodaya.in
+SMTP_PASS=<app-password>
+
+# ---- Email — Option B: Resend HTTP API (alternative) ----
+# RESEND_API_KEY=re_...
+
+# ---- Email — shared ----
 EMAIL_FROM="Niyodaya Foundation <contact@niyodaya.in>"
 EMAIL_ADMIN=contact@niyodaya.in
 
-# Admin
+# ---- Admin ----
 ADMIN_EMAILS=contact@niyodaya.in,ganesh@niyodaya.in
 
-# Public site URL (used in receipt links, webhook URLs)
+# ---- Public site URL (used in receipts, webhooks) ----
 PUBLIC_SITE_URL=https://niyodaya.in
 ```
 
@@ -236,17 +340,18 @@ In Insforge, run `select * from donations order by created_at desc` and export a
 
 ---
 
-## 9. What's still pending for v0.2
+## 9. What shipped in v0.2
 
-The parts deliberately stubbed out in v0.1 (so you can launch quickly) are:
+- ✅ **Admin authentication** — signed session cookie, `ADMIN_PASSWORD` + `ADMIN_EMAILS` allow-list, /admin/login page, logout button, 8-hour sessions. See §5.
+- ✅ **80G receipt PDF, per donor** — generated on-demand with pdfkit, attached to the thank-you email, re-downloadable via `/api/receipt?payment_id=<id>&pan=<PAN>`, admin download from the Donors report.
+- ✅ **Razorpay webhook** — `/api/razorpay-webhook` records `payment.captured` events idempotently in case the browser flow is interrupted.
+- ✅ **Contact inbox** — new `/admin/reports/contact` report with per-message view and one-click reply.
+- ✅ **Gallery upload UI** — `/admin/gallery` with multipart upload, caption, date, programme / event tags, consent checkbox. Photos land in Insforge Storage in production, `static/gallery/uploads/` in dev.
+- ✅ **Map embed on Contact** — keyless OpenStreetMap iframe + "Open in Google Maps" link.
 
-1. **Auth for `/admin`** — magic-link email login with allow-list.
-2. **Admin gallery upload UI** — drag-and-drop, EXIF-auto-date.
-3. **80G receipt PDF** — generated on successful donation, attached to email.
-4. **Razorpay webhook endpoint** — for server-side reconciliation independent of the browser flow.
-5. **Annual report uploads** — under `/resources`.
-6. **Team photos & bios.**
-7. **Google Map embed** on `/contact`.
-8. **Kannada translation** — can be added via `$lib/data/i18n` when desired.
+### Still pending → v0.3
 
-These are all small, well-scoped additions that won't change the shape of the app.
+1. **Annual report uploads** under `/resources` (same pattern as gallery).
+2. **Team photos & bios** on `/about` (content task + small upload UI).
+3. **Kannada translation** — add an i18n layer under `src/lib/data/i18n/`.
+4. **Per-user admin credentials** — swap the shared-password `auth.js` for Insforge Auth magic-link if a multi-admin org needs it.

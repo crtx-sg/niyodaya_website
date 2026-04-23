@@ -1,0 +1,79 @@
+{
+	"/": [],
+	"/about": [],
+	"/admin": [
+		"src/routes/admin/+layout.server.js",
+		"src/routes/admin/+layout.server.js"
+	],
+	"/admin/gallery": [
+		"src/routes/admin/+layout.server.js"
+	],
+	"/admin/login": [
+		"src/routes/admin/+layout.server.js"
+	],
+	"/admin/reports/applications": [
+		"src/routes/admin/+layout.server.js"
+	],
+	"/admin/reports/contact": [
+		"src/routes/admin/+layout.server.js"
+	],
+	"/admin/reports/donors": [
+		"src/routes/admin/+layout.server.js"
+	],
+	"/admin/reports/volunteers": [
+		"src/routes/admin/+layout.server.js"
+	],
+	"/api/admin/applications": [
+		"src/routes/api/admin/applications/+server.js"
+	],
+	"/api/admin/contact": [
+		"src/routes/api/admin/contact/+server.js"
+	],
+	"/api/admin/donors": [
+		"src/routes/api/admin/donors/+server.js"
+	],
+	"/api/admin/donors/receipt": [
+		"src/routes/api/admin/donors/receipt/+server.js"
+	],
+	"/api/admin/gallery": [
+		"src/routes/api/admin/gallery/+server.js"
+	],
+	"/api/admin/login": [
+		"src/routes/api/admin/login/+server.js"
+	],
+	"/api/admin/logout": [
+		"src/routes/api/admin/logout/+server.js"
+	],
+	"/api/admin/volunteers": [
+		"src/routes/api/admin/volunteers/+server.js"
+	],
+	"/api/apply": [
+		"src/routes/api/apply/+server.js"
+	],
+	"/api/contact": [
+		"src/routes/api/contact/+server.js"
+	],
+	"/api/donate": [
+		"src/routes/api/donate/+server.js"
+	],
+	"/api/gallery": [
+		"src/routes/api/gallery/+server.js"
+	],
+	"/api/razorpay-webhook": [
+		"src/routes/api/razorpay-webhook/+server.js"
+	],
+	"/api/receipt": [
+		"src/routes/api/receipt/+server.js"
+	],
+	"/api/vinaya": [
+		"src/routes/api/vinaya/+server.js"
+	],
+	"/contact": [],
+	"/donate": [],
+	"/gallery": [],
+	"/programmes": [],
+	"/programmes/vidya": [],
+	"/programmes/vinaya": [],
+	"/programmes/vridhi": [],
+	"/resources": []
+}

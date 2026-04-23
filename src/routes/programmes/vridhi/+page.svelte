@@ -1,5 +1,8 @@
 <script>
-  let form = { student_name: '', age: '', father_name: '', phone: '', school_name: '', reason: '' };
+  // Page content lives in: src/lib/data/vridhi.js  ← edit there
+  import { vridhi } from '$lib/data/vridhi.js';
+
+  let form = { student_name: '', age: '', father_name: '', phone: '', email: '', school_name: '', reason: '' };
   let status = '';
   let errors = {};
   let submitting = false;
@@ -19,10 +22,10 @@
         errors = data.errors || {};
         status = data.error || 'Something went wrong. Please try again.';
       } else {
-        status = 'Thank you — your application has been received. Our team will contact you within 5 working days.';
-        form = { student_name: '', age: '', father_name: '', phone: '', school_name: '', reason: '' };
+        status = vridhi.form.successMessage;
+        form = { student_name: '', age: '', father_name: '', phone: '', email: '', school_name: '', reason: '' };
       }
-    } catch (err) {
+    } catch {
       status = 'Network error. Please check your connection and try again.';
     } finally {
       submitting = false;
@@ -30,14 +33,14 @@
   }
 </script>
 
-<svelte:head><title>Project Vridhi — Niyodaya Foundation</title></svelte:head>
+<svelte:head><title>{vridhi.title}</title></svelte:head>
 
 <section class="section">
   <div class="container">
     <div class="hero" style="background: linear-gradient(135deg,#fff7ed,#fef9c3)">
-      <div class="eyebrow">Project</div>
-      <h1>Project Vridhi — Growth through a second chance</h1>
-      <p class="lede">For children who drop out of school or don't clear their Class 10 / 12 board exams. We counsel, re-engage, and provide NIOS and vocational pathways so the journey continues.</p>
+      <div class="eyebrow">{vridhi.hero.eyebrow}</div>
+      <h1>{vridhi.hero.heading}</h1>
+      <p class="lede">{vridhi.hero.lede}</p>
     </div>
   </div>
 </section>
@@ -46,22 +49,12 @@
   <div class="container">
     <div class="grid cols-2">
       <div class="card prose">
-        <h3>Who this is for</h3>
-        <ul>
-          <li>Children who have dropped out due to financial, family, or health reasons</li>
-          <li>Students who have not cleared Std. 10 or Std. 12 board exams</li>
-          <li>Schools wishing to refer students who need additional support</li>
-        </ul>
+        <h3>{vridhi.whoFor.heading}</h3>
+        <ul>{#each vridhi.whoFor.items as item}<li>{item}</li>{/each}</ul>
       </div>
       <div class="card prose">
-        <h3>How we support</h3>
-        <ul>
-          <li>One-on-one counselling with the student (and family)</li>
-          <li>Re-enrolment via NIOS (National Institute of Open Schooling)</li>
-          <li>Connections to vocational-training partners</li>
-          <li>Study material, fees, and mentorship support</li>
-          <li>All information is kept strictly confidential</li>
-        </ul>
+        <h3>{vridhi.howSupport.heading}</h3>
+        <ul>{#each vridhi.howSupport.items as item}<li>{item}</li>{/each}</ul>
       </div>
     </div>
   </div>
@@ -69,13 +62,12 @@
 
 <section class="section tight">
   <div class="container">
-    <h2>Our impact so far</h2>
-    <p class="text-muted">Niyodaya operates on modest funds. Every rupee is stewarded carefully — here is what we have been able to do under Project Vridhi <strong>as of 2025</strong>.</p>
+    <h2>{vridhi.impact.heading}</h2>
+    <p class="text-muted">{@html vridhi.impact.note}</p>
     <div class="grid cols-4 mt-2">
-      <div class="card stat"><div class="num">15</div><div class="lbl">children supported<br>(including dropouts)</div></div>
-      <div class="card stat"><div class="num">11</div><div class="lbl">partner schools across Bengaluru</div></div>
-      <div class="card stat"><div class="num">50%</div><div class="lbl">of children supported are girls</div></div>
-      <div class="card stat"><div class="num">₹5,00,000</div><div class="lbl">disbursed toward their education</div></div>
+      {#each vridhi.impact.stats as s}
+        <div class="card stat"><div class="num">{s.num}</div><div class="lbl">{@html s.label}</div></div>
+      {/each}
     </div>
   </div>
 </section>
@@ -83,8 +75,8 @@
 <section class="section tight">
   <div class="container">
     <div class="card">
-      <h2>Application for support</h2>
-      <p class="text-muted">Schools or needy students can apply here. Information submitted is kept confidential.</p>
+      <h2>{vridhi.form.heading}</h2>
+      <p class="text-muted">{vridhi.form.subheading}</p>
 
       {#if status}
         <div class="alert {errors && Object.keys(errors).length ? 'error' : 'success'}">{status}</div>
@@ -115,8 +107,16 @@
             {#if errors.phone}<div class="error">{errors.phone}</div>{/if}
           </div>
         </div>
-        <label for="school_name">School Name (if applicable)</label>
-        <input id="school_name" bind:value={form.school_name} />
+        <div class="row">
+          <div>
+            <label for="email">Email (optional — we'll email an acknowledgement)</label>
+            <input id="email" type="email" bind:value={form.email} />
+          </div>
+          <div>
+            <label for="school_name">School Name (if applicable)</label>
+            <input id="school_name" bind:value={form.school_name} />
+          </div>
+        </div>
 
         <label for="reason">Reason for support *</label>
         <textarea id="reason" rows="5" bind:value={form.reason} required></textarea>
@@ -127,7 +127,7 @@
             {submitting ? 'Submitting…' : 'Submit application'}
           </button>
         </div>
-        <p class="hint">Your information is kept confidential and will only be used by the Niyodaya team to assess your request.</p>
+        <p class="hint">{vridhi.form.confidentialityHint}</p>
       </form>
     </div>
   </div>
