@@ -1,0 +1,22 @@
+{
+  "name": "niyodaya-website",
+  "version": "0.1.0",
+  "description": "Niyodaya Foundation - official website (SvelteKit + Insforge + Razorpay)",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview --port 4173 --host",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^3.2.2",
+    "@sveltejs/adapter-node": "^5.2.0",
+    "@sveltejs/kit": "^2.5.17",
+    "@sveltejs/vite-plugin-svelte": "^3.1.1",
+    "svelte": "^4.2.18",
+    "svelte-check": "^3.8.1",
+    "vite": "^5.3.1"
+  },
+  "type": "module"
+}
