@@ -1,13 +1,19 @@
 {
   "name": "niyodaya-website",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Niyodaya Foundation - official website (SvelteKit + Insforge + Razorpay)",
   "private": true,
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview --port 4173 --host",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
+    "start": "node build/index.js",
+    "start:bg": "bash scripts/start-prod.sh",
+    "stop": "bash scripts/stop-prod.sh",
+    "status": "bash scripts/status.sh",
+    "logs": "bash scripts/logs.sh",
+    "package": "bash scripts/package.sh"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^3.2.2",

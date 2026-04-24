@@ -53,12 +53,42 @@ Stop the server with `Ctrl + C`.
 
 Both scripts install dependencies on first run, then launch the dev server.
 
-### Production build / run
+### Production run (background)
+
+For your first public deployment, the site ships with a tiny set of background-run scripts so you don't have to keep a terminal open.
 
 ```bash
-npm run build                 # compiles to ./build
-node build/index.js           # runs on port 3000 by default
+npm run start:bg            # build + start in background (port 3000)
+npm run status              # is it running? which PID?
+npm run logs                # tail -f niyodaya.log
+npm run stop                # stop the background server
 ```
+
+The background server writes its PID to `.niyodaya.pid` and its output to `niyodaya.log`. Use a different port with `PORT=8080 npm run start:bg`.
+
+**Windows** users who prefer batch files: `scripts/start-prod.bat [port]` is the equivalent. Stop with `taskkill /F /IM node.exe` (careful — stops all node processes).
+
+### Making a deployment package
+
+```bash
+npm run package
+```
+
+Produces `dist/niyodaya-website-<timestamp>.tar.gz` — a self-contained archive of just the files needed on a server (source, static assets, scripts, lock file, docs). `node_modules`, `build/`, `.env`, local uploads, and git history are **excluded**.
+
+Typical first-deploy flow on a fresh Linux server:
+
+```bash
+scp dist/niyodaya-website-<stamp>.tar.gz  user@your-server:~
+ssh user@your-server
+tar xzf niyodaya-website-<stamp>.tar.gz
+cd niyodaya-website
+cp .env.example .env       # edit with your real SMTP / Razorpay / Insforge values
+npm install
+npm run start:bg
+```
+
+Your site is now live on port 3000. Put nginx (or Caddy) in front for HTTPS + custom domain — see §10.
 
 ---
 
@@ -74,9 +104,18 @@ niyodaya-website/
 ├── svelte.config.js          ← SvelteKit config (uses Node adapter)
 ├── start.sh / start.bat      ← one-click run scripts
 │
+├── scripts/                  ← production run + deployment helpers
+│   ├── start-prod.sh         ← build + start in background (Linux/macOS)
+│   ├── start-prod.bat        ← Windows equivalent
+│   ├── stop-prod.sh          ← clean shutdown via PID file
+│   ├── status.sh             ← is the server alive?
+│   ├── logs.sh               ← tail niyodaya.log
+│   └── package.sh            ← create a deployment tarball
+│
 ├── static/                   ← files served as-is (public URLs)
 │   ├── logo.svg / logo-mark.svg / logo.png
-│   ├── gallery/              ← 17 curated photos + uploads/
+│   ├── gallery/              ← 17 curated photos + uploads/ (admin, gitignored)
+│   ├── team/                 ← drop team photos here (see §4 for usage)
 │   ├── MemorandumofAssociation.pdf
 │   └── 80G_Certificate.pdf
 │
@@ -86,7 +125,9 @@ niyodaya-website/
     ├── hooks.server.js       ← auth + CSRF (runs on every request)
     ├── lib/
     │   ├── components/       ← Header.svelte, Footer.svelte
-    │   ├── data/             ← all editable page copy  (see §4)
+    │   ├── data/             ← all editable page copy — nine files (see §4)
+    │   │                         site · home · about · team · vridhi · vinaya
+    │   │                         vidya · resources · donate · gallery
     │   ├── server/
     │   │   ├── auth.js       ← signed-cookie admin auth
     │   │   ├── insforge.js   ← DB client + seed + in-memory fallback
@@ -140,7 +181,8 @@ All editable copy lives in **`src/lib/data/`** — nine tiny JS files readable i
 |-----------------|------------------------------------------------------------------|
 | `site.js`       | Registered office, email, bank, nav menu, social handles         |
 | `home.js`       | Home page hero, stats, programme teasers, support tiles          |
-| `about.js`      | **Our Story**, Mission / Vision / Values, Objectives, Team       |
+| `about.js`      | **Our Story**, Mission / Vision / Values, Objectives             |
+| `team.js`       | Team section on the About page — names, roles, photos, bios     |
 | `vridhi.js`     | Project Vridhi copy + impact numbers (as of 2025)               |
 | `vinaya.js`     | Project Vinaya copy + impact numbers (as of 2025)               |
 | `vidya.js`      | Adopted schools list, Gandhiji Memorial spotlight                |
@@ -155,7 +197,29 @@ All editable copy lives in **`src/lib/data/`** — nine tiny JS files readable i
 - Lists use trailing commas — keep them balanced.
 - Fields that explicitly allow HTML (e.g. `story.paragraphs`) support `<strong>`, `<em>`, `<a href="…">`, `<br>`.
 
-See [`CONTENT_GUIDE.md`](./CONTENT_GUIDE.md) for a "where do I change X?" cheat-sheet with worked examples (impact numbers, adding adopted schools, adding gallery photos).
+### Updating the Team section
+
+The Team block on the About page lives in `src/lib/data/team.js` — you can edit it without touching any page code. Typical flow to add a person with a photo:
+
+1. Drop their photo into `static/team/` (e.g. `ganesh.jpg`). Square, ~400×400 looks best. JPG, PNG, or WebP.
+2. Open `src/lib/data/team.js` and fill in their entry:
+
+   ```js
+   {
+     initials: 'SG',                              // shown as a circle if no photo
+     name:     'Subramaniam Ganesh',
+     role:     'Director & Promoter',
+     photo:    '/team/ganesh.jpg',                // leave '' to keep using initials
+     bio:      'Founding director — 15+ years of volunteer education work.',
+     links:    [{ label: 'LinkedIn', href: 'https://www.linkedin.com/in/…' }]
+   }
+   ```
+
+3. Save. The About page picks it up on next reload.
+
+To remove a person, delete their `{ … }` block. To add a person, copy-paste one block and edit the fields. HTML is allowed inside `bio` (`<strong>`, `<em>`, `<a href="…">`).
+
+See [`CONTENT_GUIDE.md`](./CONTENT_GUIDE.md) for more worked examples (impact numbers, adopted schools, gallery photos, resource links).
 
 ---
 
@@ -447,9 +511,27 @@ Any missing variable silently falls back to the dev behaviour described in §3.
 
 ## 10. Deploying to production
 
-The site uses `@sveltejs/adapter-node`, so any Node-capable host works. Three options, easiest first:
+The site uses `@sveltejs/adapter-node`, so any Node-capable host works. Four options, easiest first:
 
-### Option 1 — Render (simplest)
+### Option 0 — Tarball + VPS (fastest path to a public URL)
+Best for a first public test drive when you already have a Linux server with SSH access.
+```bash
+# On your laptop:
+npm run package
+scp dist/niyodaya-website-<stamp>.tar.gz  user@your-server:~
+
+# On the server:
+tar xzf niyodaya-website-<stamp>.tar.gz
+cd niyodaya-website
+cp .env.example .env      # edit with real SMTP / Razorpay / Insforge values
+npm install
+npm run start:bg          # → http://localhost:3000 in background
+npm run status            # confirm it's alive
+npm run logs              # tail the log
+```
+Put nginx or Caddy in front of port 3000 for HTTPS + your custom domain. See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the nginx snippet.
+
+### Option 1 — Render (simplest managed)
 1. Push this folder to a GitHub repo.
 2. In Render → **New Web Service** → connect the repo.
 3. **Build command:** `npm install && npm run build`.
@@ -483,11 +565,11 @@ See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the deeper reference (webhook setup, 
 
 ## 11. Version history
 
-**v0.2 (current)** — admin session-cookie authentication, per-donor 80G receipt PDF (pdfkit), Razorpay webhook endpoint, contact-message inbox report, gallery upload UI (Insforge Storage + dev fallback), OSM map embed on Contact, inline status editing in Volunteers / Applications reports.
+**v0.2 (current)** — admin session-cookie authentication (`/admin/login`, 8-hour cookies, email allow-list); per-donor **80G receipt PDF** generated with pdfkit (attached to the thank-you email, re-downloadable by donor, admin download from Donors report); Razorpay webhook endpoint for server-side payment reconciliation; **contact-message inbox report** with one-click email reply; **gallery upload UI** in `/admin/gallery` (Insforge Storage in prod, `static/gallery/uploads/` in dev); keyless OSM **map embed** on Contact; **inline status editing** in Volunteers and Applications reports (dropdown saves optimistically); **Team section** extracted to its own file `src/lib/data/team.js` for easy editing with a drop-in `static/team/` photo folder; background-run scripts (`npm run start:bg / status / logs / stop`); **deployment packaging** via `npm run package` for tarball-based first deploys.
 
 **v0.1** — public site, all nine pages, form endpoints with local fallback, Razorpay Checkout in mock mode, content-in-data-files refactor.
 
-What's planned for v0.3: Annual report uploads under Resources; team photos + bios on About; Insforge Auth magic-link for per-user admin credentials; optional Kannada translation.
+What's planned for v0.3: Annual report uploads under Resources; Insforge Auth magic-link for per-user admin credentials; per-member team bios & richer About page; optional Kannada translation; admin UI to edit the `/admin/gallery` upload caption after the fact.
 
 ---
 

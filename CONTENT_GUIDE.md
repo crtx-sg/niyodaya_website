@@ -9,7 +9,8 @@ src/lib/data/
 ├── site.js        ← address, email, bank, footer, navigation menu
 ├── gallery.js     ← the curated gallery photo list
 ├── home.js        ← Home page (hero, stats, programme teasers)
-├── about.js       ← About page (Our Story, Mission/Vision/Values, Team)
+├── about.js       ← About page (Our Story, Mission/Vision/Values, Objectives)
+├── team.js        ← Team section on the About page (names, roles, photos, bios)
 ├── vridhi.js      ← Project Vridhi (impact numbers, list copy)
 ├── vinaya.js      ← Project Vinaya (impact numbers, list copy)
 ├── vidya.js       ← Project Vidya (adopted schools, spotlight)
@@ -36,7 +37,7 @@ You can open any of these in Notepad, TextEdit, VS Code, Sublime, or any text ed
 | **Our Story** paragraph                                             | `about.js`                       | `story.paragraphs`           |
 | Mission / Vision / Values                                           | `about.js`                       | `pillars`                    |
 | Objectives list                                                     | `about.js`                       | `objectives.columns`         |
-| Team names / roles                                                  | `about.js`                       | `team.members`               |
+| Team names / roles / photos / bios                                  | `team.js`                        | `members`                    |
 | **Vridhi impact numbers** (15, 11, 50%, ₹5,00,000, "as of 2025")    | `vridhi.js`                      | `impact.stats` + `impact.note` |
 | Vridhi "Who this is for" / "How we support" lists                  | `vridhi.js`                      | `whoFor.items`, `howSupport.items` |
 | **Vinaya impact numbers** (5, ₹75,000, categories)                 | `vinaya.js`                      | `impact.stats` + `impact.note` |
@@ -166,6 +167,21 @@ Open `src/lib/data/resources.js`. Inside `externalResources.items`, copy one car
    ```js
    { file: '2026_diwali.jpg', date: '2026-11-12', event: 'Diwali', programme: 'vidya', caption: 'Diwali celebration at GMV Vidya Mandir' },
    ```
+
+### Add / update a team member
+1. Drop their photo into `static/team/` (e.g. `ganesh.jpg`). Square, ~400×400 looks best.
+2. Open `src/lib/data/team.js` and set the fields:
+   ```js
+   {
+     initials: 'SG',                           // shown if photo is empty
+     name: 'Subramaniam Ganesh',
+     role: 'Director & Promoter',
+     photo: '/team/ganesh.jpg',                // or leave '' for initials
+     bio:   'Founding director — 15+ years of volunteer education work.',
+     links: [{ label: 'LinkedIn', href: 'https://…' }]
+   }
+   ```
+3. Save. The About page picks it up on next reload.
 
 ---
 

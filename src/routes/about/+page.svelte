@@ -1,6 +1,8 @@
 <script>
-  // Page content lives in: src/lib/data/about.js  ← edit there
+  // Page content lives in: src/lib/data/about.js  ← hero, story, objectives
+  // Team list lives in:    src/lib/data/team.js   ← edit there for team changes
   import { about } from '$lib/data/about.js';
+  import { team } from '$lib/data/team.js';
 </script>
 
 <svelte:head><title>{about.title}</title></svelte:head>
@@ -61,14 +63,28 @@
 
 <section class="section tight">
   <div class="container">
-    <h2>{about.team.heading}</h2>
-    <p class="text-muted">{about.team.note}</p>
+    <h2>{team.heading}</h2>
+    {#if team.note}<p class="text-muted">{team.note}</p>{/if}
     <div class="grid cols-4 mt-2">
-      {#each about.team.members as m}
-        <div class="card text-center">
-          <div class="avatar">{m.initials}</div>
+      {#each team.members as m}
+        <div class="card text-center team-card">
+          {#if m.photo}
+            <img src={m.photo} alt={m.name} class="photo" />
+          {:else}
+            <div class="avatar">{m.initials}</div>
+          {/if}
           <h4>{m.name}</h4>
-          <p class="text-muted">{m.role}</p>
+          <p class="role text-muted">{m.role}</p>
+          {#if m.bio}
+            <p class="bio">{@html m.bio}</p>
+          {/if}
+          {#if m.links && m.links.length}
+            <div class="links">
+              {#each m.links as link}
+                <a href={link.href} target="_blank" rel="noopener">{link.label}</a>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -76,5 +92,20 @@
 </section>
 
 <style>
-  .avatar { width: 64px; height: 64px; border-radius: 999px; background: #eef2ff; color: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: 'Playfair Display', Georgia, serif; font-size: 22px; margin: 0 auto 8px; }
+  .team-card { display: flex; flex-direction: column; align-items: center; }
+  .avatar {
+    width: 72px; height: 72px; border-radius: 999px;
+    background: #eef2ff; color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-family: 'Playfair Display', Georgia, serif;
+    font-size: 24px; margin: 0 auto 10px;
+  }
+  .photo {
+    width: 96px; height: 96px; border-radius: 999px;
+    object-fit: cover; margin: 0 auto 10px;
+    border: 2px solid var(--saffron-soft);
+  }
+  .role { margin: 2px 0 8px; font-size: 13px; }
+  .bio  { font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; }
+  .links { margin-top: 10px; display: flex; gap: 10px; justify-content: center; font-size: 12.5px; }
 </style>

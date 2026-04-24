@@ -74,14 +74,6 @@ export const about = {
     ]
   },
 
-  team: {
-    heading: 'Team',
-    note: 'Photos and bios to be added.',
-    members: [
-      { initials: 'SG', name: 'Subramaniam Ganesh', role: 'Director & Promoter' },
-      { initials: 'LS', name: 'Lalitha Shivaraman', role: 'Director & Promoter' },
-      { initials: '+',  name: 'Advisory Board',     role: 'Coming soon' },
-      { initials: '♥',  name: 'Volunteers',         role: 'Across Bengaluru' }
-    ]
-  }
+  // The team list now lives in its own file — src/lib/data/team.js —
+  // so it can be edited freely by non-developers without touching about.js.
 };
