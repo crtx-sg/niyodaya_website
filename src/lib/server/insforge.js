@@ -43,20 +43,21 @@ export async function insert(table, row) {
   }
 
   try {
-    const res = await fetch(`${env.INSFORGE_URL}/api/tables/${table}/rows`, {
+    const res = await fetch(`${env.INSFORGE_URL}/api/database/records/${table}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${env.INSFORGE_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify([payload])
     });
     if (!res.ok) {
       const t = await res.text();
       return { ok: false, error: `Insforge ${res.status}: ${t}` };
     }
     const data = await res.json();
-    return { ok: true, id: data.id };
+    return { ok: true, id: Array.isArray(data) ? data[0]?.id : data.id };
   } catch (err) {
     return { ok: false, error: err.message };
   }
@@ -70,8 +71,12 @@ export async function insert(table, row) {
 export async function list(table, where = {}) {
   if (!hasInsforge()) return mem[table] || [];
   try {
-    const q = new URLSearchParams(where).toString();
-    const res = await fetch(`${env.INSFORGE_URL}/api/tables/${table}/rows?${q}`, {
+    // PostgREST filter syntax: col=eq.value
+    const q = new URLSearchParams(
+      Object.entries(where).map(([k, v]) => [k, `eq.${v}`])
+    ).toString();
+    const url = `${env.INSFORGE_URL}/api/database/records/${table}${q ? `?${q}` : ''}`;
+    const res = await fetch(url, {
       headers: { 'Authorization': `Bearer ${env.INSFORGE_API_KEY}` }
     });
     if (!res.ok) return [];
@@ -96,19 +101,53 @@ export async function update(table, id, patch) {
     return { ok: true, row: rows[idx] };
   }
   try {
-    const res = await fetch(`${env.INSFORGE_URL}/api/tables/${table}/rows/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${env.INSFORGE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(patch)
-    });
+    const res = await fetch(
+      `${env.INSFORGE_URL}/api/database/records/${table}?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${env.INSFORGE_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify(patch)
+      }
+    );
     if (!res.ok) {
       const t = await res.text();
       return { ok: false, error: `Insforge ${res.status}: ${t}` };
     }
-    return { ok: true, row: await res.json() };
+    const data = await res.json();
+    return { ok: true, row: Array.isArray(data) ? data[0] : data };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+/**
+ * Upload a binary blob to an Insforge Storage bucket.
+ * Falls back to a no-op (returns ok: false) if Insforge is not configured —
+ * callers should treat the upload as best-effort and not block the user.
+ * @param {string} bucket
+ * @param {string} name        — object key inside the bucket
+ * @param {Buffer} buf
+ * @param {string} contentType
+ * @returns {Promise<{ok: boolean, url?: string, error?: string}>}
+ */
+export async function uploadObject(bucket, name, buf, contentType) {
+  if (!hasInsforge()) return { ok: false, error: 'Insforge not configured' };
+  try {
+    const form = new FormData();
+    form.append('file', new Blob([buf], { type: contentType }), name);
+    const res = await fetch(`${env.INSFORGE_URL}/api/storage/buckets/${bucket}/objects`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.INSFORGE_API_KEY}` },
+      body: form
+    });
+    if (!res.ok) return { ok: false, error: `Insforge ${res.status}: ${await res.text()}` };
+    const out = await res.json().catch(() => ({}));
+    const url = out.public_url || out.url || `${env.INSFORGE_URL}/storage/${bucket}/${name}`;
+    return { ok: true, url };
   } catch (err) {
     return { ok: false, error: err.message };
   }

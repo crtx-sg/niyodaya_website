@@ -33,5 +33,8 @@ export const donate = {
   bankHeading: 'Bank transfer (NEFT / IMPS)',
   bankNote:    'For NEFT / IMPS / UPI, please email a screenshot of the transfer along with your PAN to {EMAIL} for the 80G receipt.',
 
+  razorpayLinkHeading: 'Pay via Razorpay link',
+  razorpayLinkNote:    'You can also pay directly through our Razorpay payment page. After payment, please email your PAN and address to {EMAIL} so we can issue the 80G receipt.',
+
   thankYouTemplate: 'Thank you for your donation! An 80G receipt will be emailed to {EMAIL}.'
 };

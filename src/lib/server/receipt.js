@@ -17,6 +17,7 @@ const MUTED  = '#6b7280';
  *   email?: string,
  *   phone?: string,
  *   pan: string,
+ *   address?: string,
  *   amount: number,
  *   purpose?: string,
  *   payment_id?: string,
@@ -56,8 +57,8 @@ export function generateReceipt(d) {
       doc.moveTo(50, 138).lineTo(doc.page.width - 50, 138).strokeColor('#f59e0b').lineWidth(2).stroke();
 
       // ----- Title -----
-      doc.fillColor(BLUE).font('Helvetica-Bold').fontSize(16).text('Receipt of Donation', 50, 156, { align: 'center' });
-      doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('(Eligible for tax exemption under Section 80G of the Income Tax Act, 1961)', 50, 178, { align: 'center' });
+      doc.fillColor(BLUE).font('Helvetica-Bold').fontSize(16).text('Donation Receipt', 50, 156, { align: 'center' });
+      doc.fillColor(MUTED).font('Helvetica').fontSize(9).text('(This is a payment acknowledgement, not the 80G certificate.)', 50, 178, { align: 'center' });
 
       // ----- Meta row -----
       const metaY = 210;
@@ -75,28 +76,33 @@ export function generateReceipt(d) {
       // ----- Details table -----
       const detailsY = bodyY + 100;
       const rows = [
-        ['Donor name',    d.donor_name],
-        ['PAN',           String(d.pan || '').toUpperCase()],
-        ['Email',         d.email || '—'],
-        ['Phone',         d.phone || '—'],
-        ['Amount',        `₹ ${formatAmount(d.amount)} (${amountInWords})`],
-        ['Purpose',       d.purpose || 'General donation'],
-        ['Payment mode',  'Razorpay / Online'],
-        ['Payment ref',   d.payment_id || '—'],
-        ['Order ref',     d.order_id || '—']
+        ['Donor name',     d.donor_name],
+        ['Donor PAN',      String(d.pan || '').toUpperCase()],
+        ['Email',          d.email || '—'],
+        ['Phone',          d.phone || '—'],
+        ['Address',        d.address || '—'],
+        ['Amount',         `₹ ${formatAmount(d.amount)} (${amountInWords})`],
+        ['Purpose',        d.purpose || 'General donation'],
+        ['Payment mode',   'Razorpay / Online'],
+        ['Payment ref',    d.payment_id || '—'],
+        ['Order ref',      d.order_id || '—'],
+        ['Niyodaya PAN',   'AAHCN6260D']
       ];
       let y = detailsY;
+      const valueWidth = doc.page.width - 235;
       rows.forEach(([k, v]) => {
+        const valueText = String(v || '—');
         doc.font('Helvetica-Bold').fillColor(MUTED).fontSize(9).text(k, 50, y, { width: 130 });
-        doc.font('Helvetica').fillColor(INK).fontSize(10).text(String(v || '—'), 185, y, { width: doc.page.width - 235 });
-        y += 20;
+        doc.font('Helvetica').fillColor(INK).fontSize(10).text(valueText, 185, y, { width: valueWidth });
+        const h = doc.heightOfString(valueText, { width: valueWidth });
+        y += Math.max(20, h + 6);
       });
 
       // ----- 80G clause -----
       const clauseY = y + 20;
       doc.fillColor(SAFFRON).font('Helvetica-Bold').fontSize(10).text('Tax exemption', 50, clauseY);
       doc.fillColor(INK).font('Helvetica').fontSize(9.5).text(
-        'Donations to Niyodaya Foundation are eligible for deduction under Section 80G of the Income Tax Act, 1961. Please retain this receipt for your tax records. The organisational 80G certificate and the Memorandum of Association can be downloaded from niyodaya.in/resources.',
+        'Donations are exempt u/s 80G of the IT Act vide Regn No. AAHCN6260DF20241 for the period AY 2025-26 to AY 2027-28. Please retain this receipt for your tax records.',
         50, clauseY + 16, { width: doc.page.width - 100, align: 'justify', lineGap: 2 }
       );
 

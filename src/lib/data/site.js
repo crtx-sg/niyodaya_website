@@ -22,6 +22,10 @@ export const site = {
     account: '921010023379607',
     ifsc: 'UTIB0004426'
   },
+  razorpayHandle: {
+    url: 'https://razorpay.me/@niyodayafoundation',
+    label: '@niyodayafoundation'
+  },
   social: {
     instagram: '',
     linkedin: '',

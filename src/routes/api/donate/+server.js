@@ -2,7 +2,7 @@
 //   POST /api/donate  → create Razorpay order
 //   PUT  /api/donate  → verify signature + record donation + email receipts
 import { json } from '@sveltejs/kit';
-import { insert, update } from '$lib/server/insforge.js';
+import { insert, update, uploadObject } from '$lib/server/insforge.js';
 import { sendToUserAndAdmin } from '$lib/server/email.js';
 import { createOrder, verifyPaymentSignature } from '$lib/server/razorpay.js';
 import { generateReceipt } from '$lib/server/receipt.js';
@@ -14,6 +14,7 @@ const VALIDATORS = {
   email: isEmail,
   phone: isPhone,
   pan: isPan,
+  address: (v) => required(v, 'Address'),
   amount: isPositiveNumber
 };
 
@@ -63,6 +64,7 @@ export async function PUT({ request }) {
     email: body.email,
     phone: body.phone,
     pan: String(body.pan || '').toUpperCase(),
+    address: body.address || null,
     amount: Number(body.amount),
     purpose: body.purpose || null,
     razorpay_order_id: body.razorpay_order_id,
@@ -75,23 +77,31 @@ export async function PUT({ request }) {
   const formatted = Number(body.amount).toLocaleString('en-IN');
   const subject = `Thank you for your donation to Niyodaya — ₹${formatted}`;
 
-  // Generate the 80G receipt PDF and attach it to the thank-you email.
+  // Generate the donation receipt PDF, archive a copy in Insforge Storage,
+  // and attach it to the thank-you email.
   let attachments = [];
+  const receiptName = `donation_${result.id}.pdf`;
   try {
     const pdf = await generateReceipt({
       donor_name: body.donor_name,
       email: body.email,
       phone: body.phone,
       pan: body.pan,
+      address: body.address,
       amount: body.amount,
       purpose: body.purpose,
       payment_id: body.razorpay_payment_id,
       order_id: body.razorpay_order_id,
       created_at: new Date().toISOString()
     });
-    attachments = [{ filename: 'Niyodaya_80G_Receipt.pdf', content: pdf, contentType: 'application/pdf' }];
-    // Mark as sent immediately — we're delivering the receipt in this email.
-    await update('donations', result.id, { cert_sent: true }).catch(() => {});
+    attachments = [{ filename: 'Niyodaya_Donation_Receipt.pdf', content: pdf, contentType: 'application/pdf' }];
+
+    // Archive in Insforge Storage (best-effort — never blocks the donor).
+    const upload = await uploadObject('receipts', receiptName, pdf, 'application/pdf');
+    const patch = { cert_sent: true };
+    if (upload.ok && upload.url) patch.receipt_url = upload.url;
+    else if (!upload.ok) console.error('[donate] receipt storage upload failed:', upload.error);
+    await update('donations', result.id, patch).catch(() => {});
   } catch (err) {
     console.error('[donate] receipt generation failed:', err.message);
   }
@@ -102,14 +112,15 @@ export async function PUT({ request }) {
 
   const ackBody = `
     <p>We have received your contribution of <strong>₹${formatted}</strong>. Your support means a great deal to us and to the children we work with.</p>
-    <p>Your <strong>80G receipt</strong> is attached to this email. You can also <a href="${reDownload}">re-download it any time</a>.</p>
+    <p>Your <strong>donation receipt</strong> is attached to this email. You can also <a href="${reDownload}">re-download it any time</a>.</p>
     <ul>
       <li><b>Donor:</b> ${esc(body.donor_name)}</li>
-      <li><b>PAN:</b> ${esc(String(body.pan || '').toUpperCase())}</li>
+      <li><b>Donor PAN:</b> ${esc(String(body.pan || '').toUpperCase())}</li>
       <li><b>Amount:</b> ₹${formatted}</li>
       <li><b>Payment ref:</b> ${esc(body.razorpay_payment_id)}</li>
       <li><b>Purpose:</b> ${esc(body.purpose || '—')}</li>
     </ul>
+    <p style="font-size:13px;color:#475569">Donations are exempt u/s 80G of the IT Act vide Regn No. AAHCN6260DF20241 for the period AY 2025-26 to AY 2027-28. Niyodaya Foundation PAN: AAHCN6260D.</p>
   `;
 
   sendToUserAndAdmin({

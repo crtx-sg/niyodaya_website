@@ -73,13 +73,19 @@ create table donations (
   email                 text not null,
   phone                 text,
   pan                   text,
+  address               text,
   amount                numeric(12,2) not null,
   purpose               text,
   razorpay_order_id     text,
   razorpay_payment_id   text,
+  receipt_url           text,
   status                text default 'captured',
   created_at            timestamptz default now()
 );
+
+-- For existing deployments missing newer columns:
+-- alter table donations add column if not exists address text;
+-- alter table donations add column if not exists receipt_url text;
 
 create table gallery_photos (
   id            text primary key default gen_random_uuid()::text,
@@ -98,6 +104,11 @@ create table gallery_photos (
 - `gallery_photos` — anonymous reads allowed ONLY where `approved = true`.
 - `vridhi_applications`, `vinaya_requests`, `contact_messages`, `donations` — no anonymous reads; only the admin role (see §5) can read rows.
 - Inserts are accepted from our server using `INSFORGE_API_KEY` — clients never talk to Insforge directly.
+
+### d. Storage buckets
+Create two buckets in **Insforge → Storage**:
+- `gallery` — **public**. Holds approved photos served on `/gallery`.
+- `receipts` — **private**. Holds an archival copy of every donation-receipt PDF emailed to a donor. Receipts contain donor PAN and address, so the bucket must NOT allow anonymous reads. The donate endpoint writes to it; the `receipt_url` saved on the donation row is for admin reference.
 
 ---
 

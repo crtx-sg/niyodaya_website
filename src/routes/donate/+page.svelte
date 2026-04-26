@@ -5,7 +5,7 @@
   import { site } from '$lib/data/site.js';
   import { onMount } from 'svelte';
 
-  let form = { donor_name: '', email: '', phone: '', pan: '', amount: '', purpose: '' };
+  let form = { donor_name: '', email: '', phone: '', pan: '', address: '', amount: '', purpose: '' };
   let status = '';
   let errors = {};
   let submitting = false;
@@ -73,7 +73,7 @@
           const out = await v.json();
           if (v.ok) {
             status = donate.thankYouTemplate.replace('{EMAIL}', form.email);
-            form = { donor_name: '', email: '', phone: '', pan: '', amount: '', purpose: '' };
+            form = { donor_name: '', email: '', phone: '', pan: '', address: '', amount: '', purpose: '' };
           } else {
             status = out.error || 'Payment captured but verification failed. Please email contact@niyodaya.in.';
           }
@@ -138,6 +138,10 @@
               {#if errors.pan}<div class="error">{errors.pan}</div>{/if}
             </div>
           </div>
+          <label>Address (for the 80G receipt) *</label>
+          <textarea rows="2" bind:value={form.address} placeholder="House / street, area, city, state, PIN" required></textarea>
+          {#if errors.address}<div class="error">{errors.address}</div>{/if}
+
           <label>Amount (INR) *</label>
           <input type="number" min="1" bind:value={form.amount} required />
           {#if errors.amount}<div class="error">{errors.amount}</div>{/if}
@@ -175,6 +179,16 @@ Bank:    {site.bank.bank}
 A/C No.: {site.bank.account}
 IFSC:    {site.bank.ifsc}</pre>
           <p class="hint">{donate.bankNote.replace('{EMAIL}', site.email)}</p>
+        </div>
+
+        <div class="card mt-2">
+          <h3>{donate.razorpayLinkHeading}</h3>
+          <p>
+            <a class="btn primary" href={site.razorpayHandle.url} target="_blank" rel="noopener noreferrer">
+              {site.razorpayHandle.label} →
+            </a>
+          </p>
+          <p class="hint">{donate.razorpayLinkNote.replace('{EMAIL}', site.email)}</p>
         </div>
       </div>
     </div>
