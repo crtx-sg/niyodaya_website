@@ -51,6 +51,10 @@
 
     <div class="text-center mt-3">
       <a class="btn primary" href={vidya.cta.href}>{vidya.cta.label}</a>
+      <p class="text-muted mt-2" style="font-size: 13.5px;">
+        Or <a href="/donor-appeal.pdf">download our donor-appeal letter (PDF)</a>
+        — context for the upcoming Gandhiji Memorial Vimanapura Vidya Mandir adoption and ways to give.
+      </p>
     </div>
   </div>
 </section>

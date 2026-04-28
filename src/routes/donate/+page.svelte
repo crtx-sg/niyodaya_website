@@ -190,6 +190,11 @@ IFSC:    {site.bank.ifsc}</pre>
           </p>
           <p class="hint">{donate.razorpayLinkNote.replace('{EMAIL}', site.email)}</p>
         </div>
+
+        <p class="hint mt-2 text-center">
+          Considering a larger or institutional contribution?
+          <a href="/donor-appeal.pdf">Download our donor-appeal letter (PDF)</a>.
+        </p>
       </div>
     </div>
   </div>
