@@ -12,9 +12,7 @@ import { json } from '@sveltejs/kit';
 import { insert, list, update } from '$lib/server/insforge.js';
 import { toCSV } from '$lib/utils/csv.js';
 import { validate, required, isPositiveNumber } from '$lib/utils/validation.js';
-
-export const PROJECTS = ['vidya', 'vinaya', 'vridhi', 'general'];
-export const DISBURSEMENT_STATUSES = ['planned', 'paid', 'cancelled'];
+import { PROJECTS, DISBURSEMENT_STATUSES } from '$lib/utils/statuses.js';
 
 const COLUMNS = [
   { key: 'payment_date',     label: 'Payment date' },

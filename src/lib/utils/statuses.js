@@ -4,6 +4,8 @@
 // the API and the UI pick them up automatically.
 // =====================================================
 
-export const APPLICATION_STATUSES = ['new', 'counselling', 'enrolled', 'declined', 'closed'];
-export const VOLUNTEER_STATUSES   = ['new', 'active', 'inactive', 'declined'];
-export const DONATION_STATUSES    = ['captured', 'captured_via_webhook', 'refunded'];
+export const APPLICATION_STATUSES   = ['new', 'counselling', 'enrolled', 'declined', 'closed'];
+export const VOLUNTEER_STATUSES     = ['new', 'active', 'inactive', 'declined'];
+export const DONATION_STATUSES      = ['captured', 'captured_via_webhook', 'refunded'];
+export const DISBURSEMENT_STATUSES  = ['planned', 'paid', 'cancelled'];
+export const PROJECTS               = ['vidya', 'vinaya', 'vridhi', 'general'];
