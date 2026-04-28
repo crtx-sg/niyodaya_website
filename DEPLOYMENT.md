@@ -87,6 +87,20 @@ create table donations (
 -- alter table donations add column if not exists address text;
 -- alter table donations add column if not exists receipt_url text;
 
+create table disbursements (
+  id                text primary key default gen_random_uuid()::text,
+  project           text not null,           -- 'vidya' | 'vinaya' | 'vridhi' | 'general'
+  institution_name  text not null,           -- the donee — school / partner / vendor
+  beneficiaries     text not null,           -- e.g. '120 students (Classes 6–10)'
+  description       text,                    -- what the payment was for
+  amount            numeric(12,2) not null,
+  bank_ref          text not null,           -- NEFT / IMPS / cheque ref from your bank
+  payment_date      date not null,
+  status            text default 'paid',     -- 'planned' | 'paid' | 'cancelled'
+  notes             text,
+  created_at        timestamptz default now()
+);
+
 create table gallery_photos (
   id            text primary key default gen_random_uuid()::text,
   image_url     text not null,

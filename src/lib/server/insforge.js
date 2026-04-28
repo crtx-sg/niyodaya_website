@@ -18,6 +18,7 @@ const mem = {
   vinaya_requests: [],
   contact_messages: [],
   donations: [],
+  disbursements: [],
   gallery_photos: []
 };
 
@@ -183,6 +184,13 @@ export function seedSampleData() {
     { id: 'sample_a2', student_name: 'Radhika P.', age: 14, father_name: 'Prakash P.',  phone: '9900000002', email: null,                 school_name: 'Govt Primary School, New Thippasandra', reason: 'Dropped out due to financial hardship',                        status: 'counselling', created_at: daysAgo(110) },
     { id: 'sample_a3', student_name: 'Arif K.',    age: 17, father_name: 'Karim K.',    phone: '9900000003', email: 'karim@example.com',  school_name: 'Govt PU College',                       reason: 'Failed Class 12 — wants vocational training',                  status: 'new',         created_at: daysAgo(60)  },
     { id: 'sample_a4', student_name: 'Deepika N.', age: 15, father_name: 'Nagesh N.',   phone: '9900000004', email: null,                 school_name: null,                                    reason: 'Displaced during floods — needs bridge support',               status: 'new',         created_at: daysAgo(15)  }
+  ];
+
+  if (mem.disbursements.length === 0) mem.disbursements = [
+    { id: 'sample_x1', project: 'vidya',  institution_name: 'Gandhiji Memorial High School',     beneficiaries: '120 students (Classes 6–10)', description: 'School furniture refresh — desks & blackboards', amount: 75000,  bank_ref: 'NEFT/UTIB/2024112501', payment_date: '2024-11-25', status: 'paid', notes: null, created_at: daysAgo(150) },
+    { id: 'sample_x2', project: 'vridhi', institution_name: 'NIOS Centre, New Thippasandra',     beneficiaries: 'Kiran S., Radhika P. (Class 10 NIOS)', description: 'NIOS exam fees + study material', amount: 20000,  bank_ref: 'IMPS/UTIB/2025010312', payment_date: '2025-01-03', status: 'paid', notes: null, created_at: daysAgo(110) },
+    { id: 'sample_x3', project: 'vinaya', institution_name: 'GMV Vidya Mandir',                  beneficiaries: '2 volunteer teachers (Maths, English)', description: 'Quarterly honorarium', amount: 60000,  bank_ref: 'NEFT/UTIB/2025021702', payment_date: '2025-02-17', status: 'paid', notes: null, created_at: daysAgo(70)  },
+    { id: 'sample_x4', project: 'vidya',  institution_name: 'Govt Primary School, Hebbal',       beneficiaries: '85 students (Classes 1–5)',  description: 'Library books & art supplies', amount: 25000,  bank_ref: 'NEFT/UTIB/2025040903', payment_date: '2025-04-09', status: 'paid', notes: null, created_at: daysAgo(20)  }
   ];
 
   if (mem.contact_messages.length === 0) mem.contact_messages = [

@@ -52,6 +52,13 @@
         <p>Messages sent via the public Contact form. Reply by email in one click.</p>
         <span class="cta">Open →</span>
       </a>
+
+      <a class="card report-card" href="/admin/disbursements">
+        <div class="icon">📤</div>
+        <h3>Disbursements</h3>
+        <p>Record outgoing payments to schools / partners. Project, beneficiaries, bank ref, date.</p>
+        <span class="cta">Open →</span>
+      </a>
     </div>
 
     <h2 class="mt-4">Content management</h2>

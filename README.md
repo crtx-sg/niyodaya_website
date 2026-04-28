@@ -2,9 +2,9 @@
 
 Official website for **Niyodaya Foundation**, a Section 8 non-profit in Bangalore supporting education for underprivileged, displaced, and specially-abled children.
 
-Live flows: three-project programme pages (Vridhi / Vinaya / Vidya), a curated gallery with admin uploads, a resources page with downloadable Memorandum and 80G certificate, a donation page that opens Razorpay Checkout and emails a per-donor 80G receipt, a contact form, and a full admin dashboard with donor / volunteer / application / inbox reports.
+Live flows: three-project programme pages (Vridhi / Vinaya / Vidya), a curated gallery with admin uploads, a resources page with downloadable Memorandum and 80G certificate, a donation page that opens Razorpay Checkout (or the public `razorpay.me/@niyodayafoundation` link) and emails a per-donor donation receipt with the 80G exemption clause, a contact form, and a full admin dashboard with donor / volunteer / application / inbox reports.
 
-**Tech:** SvelteKit + Node adapter · plain hand-written CSS · Insforge for data & storage · Razorpay for payments · nodemailer / Resend for email · pdfkit for 80G receipts.
+**Tech:** SvelteKit + Node adapter · plain hand-written CSS · Insforge for data & storage · Razorpay for payments · nodemailer / Resend for email · pdfkit for donation receipts.
 
 > This file is the full operator's manual. See also [`CONTENT_GUIDE.md`](./CONTENT_GUIDE.md) for day-to-day text edits and [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the deeper deployment reference.
 
@@ -133,7 +133,7 @@ niyodaya-website/
     │   │   ├── insforge.js   ← DB client + seed + in-memory fallback
     │   │   ├── razorpay.js   ← order creation + signature verification
     │   │   ├── email.js      ← SMTP + Resend + console fallback
-    │   │   └── receipt.js    ← 80G receipt PDF generator (pdfkit)
+    │   │   └── receipt.js    ← donation receipt PDF generator (pdfkit)
     │   └── utils/
     │       ├── csv.js        ← CSV export helper
     │       ├── statuses.js   ← workflow states for admin reports
@@ -147,11 +147,12 @@ niyodaya-website/
         ├── resources/
         ├── donate/
         ├── contact/
-        ├── admin/                            ← reports, gallery, login
+        ├── health/                           ← /health liveness endpoint (public)
+        ├── admin/                            ← reports, disbursements, gallery, login
         └── api/                              ← server endpoints
             ├── apply, vinaya, contact, donate, gallery, receipt
             ├── razorpay-webhook
-            └── admin/{donors,volunteers,applications,contact,gallery,login,logout}
+            └── admin/{donors,volunteers,applications,contact,disbursements,gallery,login,logout}
 ```
 
 ---
@@ -166,8 +167,9 @@ The site runs **fully end-to-end with zero setup**. Each integration falls back 
 | Donations       | Razorpay Checkout opens, real order created     | Returns `order_mock_…`; UI shows success msg   |
 | Email           | Sent via SMTP or Resend                          | Printed as `[email:fallback]` in the terminal  |
 | Admin login     | Email allow-list + shared password required     | Pages open; one-time terminal warning printed  |
-| Gallery uploads | Sent to Insforge Storage bucket                 | Saved to `static/gallery/uploads/` locally     |
-| 80G receipts    | Generated + attached to email + admin download  | Same — they are always pdfkit-rendered locally |
+| Gallery uploads | Sent to Insforge Storage bucket `gallery`       | Saved to `static/gallery/uploads/` locally     |
+| Receipt archive | PDF copy uploaded to bucket `receipts` (private)| Skipped — receipt only emailed, not stored     |
+| Donation receipt| Generated + attached to email + admin download  | Same — they are always pdfkit-rendered locally |
 
 This makes demos and prototyping frictionless — and as you add real credentials in `.env`, each feature silently switches from mock to live with no code change.
 
@@ -187,7 +189,7 @@ All editable copy lives in **`src/lib/data/`** — nine tiny JS files readable i
 | `vinaya.js`     | Project Vinaya copy + impact numbers (as of 2025)               |
 | `vidya.js`      | Adopted schools list, Gandhiji Memorial spotlight                |
 | `resources.js`  | External links + downloadable documents                          |
-| `donate.js`     | Hero, "Where your money goes" table, bank note                   |
+| `donate.js`     | Hero, "Where your money goes" table, bank note, Razorpay-link copy |
 | `gallery.js`    | Curated gallery list (filename + date + caption + programme)     |
 
 **Editing rules (in every file's comment header too):**
@@ -225,7 +227,7 @@ See [`CONTENT_GUIDE.md`](./CONTENT_GUIDE.md) for more worked examples (impact nu
 
 ## 5. SMTP / email configuration
 
-Every form (Vridhi apply, Vinaya, Contact, Donate) sends an acknowledgement email **to the submitter** with `contact@niyodaya.in` on **Cc**. Donations additionally attach the **80G receipt PDF**. The `Reply-To` header is the admin inbox so replies land there.
+Every form (Vridhi apply, Vinaya, Contact, Donate) sends an acknowledgement email **to the submitter** with `contact@niyodaya.in` on **Cc**. Donations additionally attach the **donation-receipt PDF** (a payment acknowledgement, not the 80G certificate; the receipt body carries the exemption clause: *"Donations are exempt u/s 80G of the IT Act vide Regn No. AAHCN6260DF20241 for the period AY 2025-26 to AY 2027-28."*). The `Reply-To` header is the admin inbox so replies land there.
 
 ### Transports (tried in this order)
 
@@ -334,11 +336,15 @@ Full list: [razorpay.com/docs/payments/payments/test-card-details](https://razor
 
 ### How the flow works in code
 ```
-Donor fills form  → POST /api/donate  → server creates Razorpay order  → returns order_id + public key
-Browser opens Razorpay Checkout  → donor pays  → Razorpay returns signed payload
-Browser calls PUT /api/donate  → server verifies signature  → inserts donations row
-80G receipt PDF generated (pdfkit) → attached to email → donor (To) + contact@niyodaya.in (Cc)
+Donor fills form (incl. address) → POST /api/donate → server creates Razorpay order → returns order_id + public key
+Browser opens Razorpay Checkout → donor pays → Razorpay returns signed payload
+Browser calls PUT /api/donate → server verifies signature → inserts donations row (with address)
+Donation receipt PDF generated (pdfkit) → archived in Insforge bucket `receipts` (URL saved to receipt_url)
+                                       → attached to email → donor (To) + contact@niyodaya.in (Cc)
 ```
+
+### Razorpay direct link (alternative)
+The Donate page also surfaces the public Razorpay payment-page link **`https://razorpay.me/@niyodayafoundation`** (`site.razorpayHandle` in `src/lib/data/site.js`). This is for donors who prefer paying outside the embedded checkout (UPI from their banking app, etc.). Payments through this link are **not** captured by `/api/donate`, so no donations row, no automatic receipt, and no archive copy is created. The donate page asks those donors to email their PAN and address to `contact@niyodaya.in` so a receipt can be issued manually. If you want auto-receipts here too, enable a Razorpay webhook on `payment.captured` for the same merchant account and extend `/api/razorpay-webhook`.
 
 ---
 
@@ -404,13 +410,36 @@ create table donations (
   email                 text not null,
   phone                 text,
   pan                   text,
+  address               text,
   amount                numeric(12,2) not null,
   purpose               text,
   razorpay_order_id     text,
   razorpay_payment_id   text,
+  receipt_url           text,
   cert_sent             boolean default false,
   status                text default 'captured',
   created_at            timestamptz default now()
+);
+
+-- For projects that already created `donations` before address / receipt_url
+-- existed, run these to bring the schema up-to-date and refresh PostgREST's
+-- column cache (otherwise inserts fail with PGRST204):
+-- alter table donations add column if not exists address text;
+-- alter table donations add column if not exists receipt_url text;
+-- notify pgrst, 'reload schema';
+
+create table disbursements (
+  id                text primary key default gen_random_uuid()::text,
+  project           text not null,           -- 'vidya' | 'vinaya' | 'vridhi' | 'general'
+  institution_name  text not null,           -- the donee (school / partner / vendor)
+  beneficiaries     text not null,
+  description       text,
+  amount            numeric(12,2) not null,
+  bank_ref          text not null,
+  payment_date      date not null,
+  status            text default 'paid',     -- 'planned' | 'paid' | 'cancelled'
+  notes             text,
+  created_at        timestamptz default now()
 );
 
 create table gallery_photos (
@@ -430,8 +459,10 @@ create table gallery_photos (
 - `gallery_photos` — anonymous reads allowed *only* where `approved = true`.
 - All other tables — no anonymous reads; only the admin role can read. Inserts come from our server with the `INSFORGE_API_KEY`; the browser never talks to Insforge directly.
 
-### Storage bucket
-Create a public bucket named **`gallery`** — this is where `/admin/gallery` uploads land in production.
+### Storage buckets
+Create two buckets in **Insforge → Storage**:
+- **`gallery`** — *public*. Approved gallery photos uploaded from `/admin/gallery` land here.
+- **`receipts`** — *private*. Holds an archival copy of every donation-receipt PDF emailed to a donor. Receipts contain donor PAN and address, so this bucket must NOT allow anonymous reads. The donate endpoint writes here as `donation_<donation_id>.pdf` and saves the returned URL to `donations.receipt_url`.
 
 ---
 
@@ -455,10 +486,11 @@ Leave `ADMIN_PASSWORD` blank in dev to keep pages open (the server prints a warn
 
 ### What's inside
 
-- **Reports → Donors** — year filter, running totals, per-donor 80G receipt download, mark 80G sent/pending, CSV export.
+- **Reports → Donors** — year filter, running totals, per-donor donation-receipt download (regenerated from the row, including donor address if captured), mark receipt sent/pending, CSV export.
 - **Reports → Volunteers** — year filter, **inline status dropdown** (new / active / inactive / declined), CSV export.
 - **Reports → Applications** — year filter, **inline status dropdown** (new / counselling / enrolled / declined / closed), CSV export.
 - **Reports → Contact inbox** — per-message card view, one-click **Reply by email** (opens mailto with quoted original).
+- **Disbursements** (`/admin/disbursements`) — record outgoing payments to donee institutions. The actual transfer is made offline from the bank; this page is the audit trail. Per-record fields: project (`vidya` / `vinaya` / `vridhi` / `general`), donee institution, beneficiaries, free-text description, amount, bank reference, payment date, status (`planned` / `paid` / `cancelled`), notes. Filter by year and project, change status inline, export CSV.
 - **Content → Gallery** — drag-and-drop photo upload with caption, date, programme tag, event tag, consent checkbox. Publishes to the public gallery instantly.
 
 ### Editing the status vocabulary
@@ -539,6 +571,16 @@ Put nginx or Caddy in front of port 3000 for HTTPS + your custom domain. See [`D
 5. Copy every `.env` value into Render's Environment tab.
 6. Add `niyodaya.in` as a custom domain; follow Render's DNS instructions.
 7. Pushes to `main` auto-deploy.
+8. Set Render's **Health check path** to `/health`. The endpoint returns 200 with a small JSON body (no DB calls), so it's safe to ping aggressively.
+
+#### Keeping a Render free-tier service warm
+Render's free tier puts a Web Service to sleep after 15 minutes of no traffic — the next visit then waits ~30 seconds for cold-start. The `/health` endpoint exists so a free uptime monitor can hit it at a regular interval and keep the dyno warm. Pick **one** of:
+
+- **UptimeRobot** (easiest, free) — create an HTTP(s) monitor for `https://<your-render-app>.onrender.com/health`, interval 5 minutes. Done.
+- **GitHub Actions cron** — a `schedule: cron: '*/10 * * * *'` workflow that `curl`s `/health` every 10 minutes.
+- **cron-job.org** — same idea, web UI, free.
+
+Note: keeping a free instance permanently warm is in a grey area of Render's terms (they do not strictly disallow it, but the free tier is meant for prototyping). If the site grows past a hobby project, upgrade to the $7/mo Starter plan and drop the keep-alive ping.
 
 ### Option 2 — Vercel
 1. `vercel` CLI or connect the repo in the dashboard.
@@ -555,8 +597,9 @@ Put nginx or Caddy in front of port 3000 for HTTPS + your custom domain. See [`D
 ### 60-second post-deploy smoke test
 - Visit every top-level page (`/`, `/about`, the three `/programmes/*`, `/gallery`, `/resources`, `/donate`, `/contact`).
 - Submit the Contact form — confirm the acknowledgement + admin copy arrive.
-- In Razorpay **Test Mode**, donate ₹10 — confirm (a) Razorpay dashboard shows the payment, (b) the `donations` table has a row, (c) the donor receives a thank-you email **with the 80G receipt PDF attached**.
-- Log into `/admin` and open each of the four reports — all should render without error.
+- In Razorpay **Test Mode**, donate ₹10 — confirm (a) Razorpay dashboard shows the payment, (b) the `donations` table has a row with `address` and `receipt_url` populated, (c) a copy of the PDF appears in the Insforge `receipts` bucket, (d) the donor receives a thank-you email **with the donation receipt PDF attached**, and `contact@niyodaya.in` is on Cc.
+- Hit `https://<your-host>/health` — expect a 200 response with `{ ok: true, ts, uptime_s }` and no auth challenge.
+- Log into `/admin` and open each of the reports plus `/admin/disbursements` — all should render without error.
 - Upload a test photo from `/admin/gallery` — confirm it appears on `/gallery` immediately.
 
 See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the deeper reference (webhook setup, swapping auth, upgrading adapters).
@@ -565,7 +608,11 @@ See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the deeper reference (webhook setup, 
 
 ## 11. Version history
 
-**v0.2 (current)** — admin session-cookie authentication (`/admin/login`, 8-hour cookies, email allow-list); per-donor **80G receipt PDF** generated with pdfkit (attached to the thank-you email, re-downloadable by donor, admin download from Donors report); Razorpay webhook endpoint for server-side payment reconciliation; **contact-message inbox report** with one-click email reply; **gallery upload UI** in `/admin/gallery` (Insforge Storage in prod, `static/gallery/uploads/` in dev); keyless OSM **map embed** on Contact; **inline status editing** in Volunteers and Applications reports (dropdown saves optimistically); **Team section** extracted to its own file `src/lib/data/team.js` for easy editing with a drop-in `static/team/` photo folder; background-run scripts (`npm run start:bg / status / logs / stop`); **deployment packaging** via `npm run package` for tarball-based first deploys.
+**v0.2.2 (current)** — New **Disbursements** report at `/admin/disbursements` records outgoing payments to donee institutions (project, beneficiaries, amount, bank ref, payment date, status, notes). Backed by a new `disbursements` table; CSV export and inline status editing reuse the existing report patterns. Admin-home tile added. New public **`/health`** endpoint returns `200 { ok, ts, uptime_s }` with no DB calls — point Render's Health Check Path here, and use it as the keep-alive target for an UptimeRobot / GitHub-Actions-cron pinger to stop free-tier instances from sleeping.
+
+**v0.2.1** — Donor form now captures **donor address** (required, used on the receipt). Donate page surfaces the public Razorpay handle **`razorpay.me/@niyodayafoundation`** as an alternative to the embedded Checkout. Receipt PDF re-titled **"Donation Receipt"** (a payment acknowledgement, not the 80G certificate); the body now carries the exact statutory clause *"Donations are exempt u/s 80G of the IT Act vide Regn No. AAHCN6260DF20241 for the period AY 2025-26 to AY 2027-28."* with **Donor PAN** and **Niyodaya PAN (`AAHCN6260D`)** both shown as separate rows. After a successful payment the PDF is **archived in Insforge Storage** in a new private bucket `receipts` (key `donation_<donation_id>.pdf`) and the URL is saved to `donations.receipt_url`. Schema added two columns: `address text`, `receipt_url text` (with `notify pgrst, 'reload schema'` required after the alter to avoid a `PGRST204` schema-cache miss). Email copy reworded throughout (attachment is `Niyodaya_Donation_Receipt.pdf`, body shows Donor PAN and the 80G clause as a footer).
+
+**v0.2** — admin session-cookie authentication (`/admin/login`, 8-hour cookies, email allow-list); per-donor **donation receipt PDF** generated with pdfkit (attached to the thank-you email, re-downloadable by donor, admin download from Donors report); Razorpay webhook endpoint for server-side payment reconciliation; **contact-message inbox report** with one-click email reply; **gallery upload UI** in `/admin/gallery` (Insforge Storage in prod, `static/gallery/uploads/` in dev); keyless OSM **map embed** on Contact; **inline status editing** in Volunteers and Applications reports (dropdown saves optimistically); **Team section** extracted to its own file `src/lib/data/team.js` for easy editing with a drop-in `static/team/` photo folder; background-run scripts (`npm run start:bg / status / logs / stop`); **deployment packaging** via `npm run package` for tarball-based first deploys.
 
 **v0.1** — public site, all nine pages, form endpoints with local fallback, Razorpay Checkout in mock mode, content-in-data-files refactor.
 
@@ -583,6 +630,7 @@ What's planned for v0.3: Annual report uploads under Resources; Insforge Auth ma
 - **Admin API returns 401 in curl tests.** Login first and save cookies to a jar (`-c cookies.txt`), then send with `-b cookies.txt` on subsequent calls.
 - **Razorpay checkout shows "Payment widget still loading".** Your `.env` is missing `PUBLIC_RAZORPAY_KEY_ID`, or the CDN script at `checkout.razorpay.com` is blocked on your network.
 - **SMTP emails not delivered.** Check the server terminal for `[email:smtp] failed` lines. Most common cause: Gmail requires an *app password*, not your regular password (see §5).
+- **`Insforge 400: PGRST204 — Could not find the 'address' (or 'receipt_url') column of 'donations' in the schema cache`** after a successful Razorpay payment. The `donations` table on Insforge predates these columns. Fix once: run `alter table donations add column if not exists address text; alter table donations add column if not exists receipt_url text; notify pgrst, 'reload schema';` in the Insforge SQL console. The `notify` is essential — without it PostgREST keeps the stale column list cached. The donor's payment is still safe in the Razorpay dashboard; insert the row manually from the Razorpay payment record (donor name, email, PAN are in the Razorpay `notes` field) and re-issue the receipt from `/admin/reports/donors`.
 - **"Invalid export 'X'" build error.** SvelteKit endpoint files can only export HTTP handlers. Put constants in `src/lib/utils/*.js`.
 
 ---
